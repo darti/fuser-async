@@ -21,7 +21,7 @@ pub trait AsyncFilesystem {
         ino: u64,
         fh: u64,
         offset: i64,
-    ) -> Vec<(u64, i64, FileType, String)>;
+    ) -> Result<Vec<(u64, i64, FileType, String)>, AsyncFilesystemError>;
 
     async fn read(
         &mut self,
@@ -56,7 +56,7 @@ where
     FS: AsyncFilesystem,
 {
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
-        match self.rt.block_on(async { self.fs.getattr(ino).await }) {
+        match self.rt.block_on(self.fs.getattr(ino)) {
             Ok((ttl, attr)) => reply.attr(&ttl, &attr),
             Err(_e) => {
                 reply.error(libc::ENOENT);
@@ -71,10 +71,7 @@ where
         name: &std::ffi::OsStr,
         reply: fuser::ReplyEntry,
     ) {
-        match self
-            .rt
-            .block_on(async { self.fs.lookup(parent, name).await })
-        {
+        match self.rt.block_on(self.fs.lookup(parent, name)) {
             Ok((ttl, attr, generation)) => reply.entry(&ttl, &attr, generation),
             Err(_e) => {
                 reply.error(libc::ENOENT);
@@ -90,17 +87,18 @@ where
         offset: i64,
         mut reply: fuser::ReplyDirectory,
     ) {
-        let entries = self
-            .rt
-            .block_on(async { self.fs.readdir(ino, fh, offset).await });
+        match self.rt.block_on(self.fs.readdir(ino, fh, offset)) {
+            Ok(entries) => {
+                for (ino, offset, kind, name) in entries {
+                    if reply.add(ino, offset, kind, name) {
+                        break;
+                    }
+                }
 
-        for (ino, offset, kind, name) in entries {
-            if reply.add(ino, offset, kind, name) {
-                break;
+                reply.ok();
             }
+            Err(_) => reply.error(libc::ENOENT),
         }
-
-        reply.ok();
     }
 
     fn read(
@@ -116,7 +114,7 @@ where
     ) {
         match self
             .rt
-            .block_on(async { self.fs.read(ino, fh, offset, size, flags, lock_owner).await })
+            .block_on(self.fs.read(ino, fh, offset, size, flags, lock_owner))
         {
             Ok(data) => reply.data(data),
             Err(_) => reply.error(libc::ENOENT),

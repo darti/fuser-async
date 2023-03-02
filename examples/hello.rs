@@ -88,7 +88,7 @@ impl AsyncFilesystem for SimpleFS {
         ino: u64,
         _fh: u64,
         offset: i64,
-    ) -> Vec<(u64, i64, FileType, String)> {
+    ) -> Result<Vec<(u64, i64, FileType, String)>, AsyncFilesystemError> {
         match ino {
             1 => {
                 let mut entries = Vec::new();
@@ -101,9 +101,12 @@ impl AsyncFilesystem for SimpleFS {
                 if offset <= 2 {
                     entries.push((2, 3, FileType::RegularFile, "hello.txt".to_string()));
                 }
-                entries
+                Ok(entries)
             }
-            _ => Vec::new(),
+            _ => Err(AsyncFilesystemError::ReadError(
+                ino,
+                "Not a directory".to_string(),
+            )),
         }
     }
 
