@@ -1,7 +1,7 @@
 use std::{ffi::OsStr, time::Duration};
 
 use async_trait::async_trait;
-use fuser::{FileAttr, Filesystem};
+use fuser::{FileAttr, FileType, Filesystem};
 use tokio::runtime::Handle;
 
 use crate::errors::AsyncFilesystemError;
@@ -15,6 +15,23 @@ pub trait AsyncFilesystem {
         parent: u64,
         name: &OsStr,
     ) -> Result<(Duration, FileAttr, u64), AsyncFilesystemError>;
+
+    async fn readdir(
+        &mut self,
+        ino: u64,
+        fh: u64,
+        offset: i64,
+    ) -> Vec<(u64, i64, FileType, String)>;
+
+    async fn read(
+        &mut self,
+        ino: u64,
+        fh: u64,
+        offset: i64,
+        size: u32,
+        flags: i32,
+        lock: Option<u64>,
+    ) -> Result<&[u8], AsyncFilesystemError>;
 }
 
 pub(crate) struct AsyncFsImpl<FS>
@@ -62,6 +79,47 @@ where
             Err(_e) => {
                 reply.error(libc::ENOENT);
             }
+        }
+    }
+
+    fn readdir(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        fh: u64,
+        offset: i64,
+        mut reply: fuser::ReplyDirectory,
+    ) {
+        let entries = self
+            .rt
+            .block_on(async { self.fs.readdir(ino, fh, offset).await });
+
+        for (ino, offset, kind, name) in entries {
+            if reply.add(ino, offset, kind, name) {
+                break;
+            }
+        }
+
+        reply.ok();
+    }
+
+    fn read(
+        &mut self,
+        _req: &fuser::Request<'_>,
+        ino: u64,
+        fh: u64,
+        offset: i64,
+        size: u32,
+        flags: i32,
+        lock_owner: Option<u64>,
+        reply: fuser::ReplyData,
+    ) {
+        match self
+            .rt
+            .block_on(async { self.fs.read(ino, fh, offset, size, flags, lock_owner).await })
+        {
+            Ok(data) => reply.data(data),
+            Err(_) => reply.error(libc::ENOENT),
         }
     }
 }

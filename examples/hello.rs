@@ -82,6 +82,49 @@ impl AsyncFilesystem for SimpleFS {
             )),
         }
     }
+
+    async fn readdir(
+        &mut self,
+        ino: u64,
+        _fh: u64,
+        offset: i64,
+    ) -> Vec<(u64, i64, FileType, String)> {
+        match ino {
+            1 => {
+                let mut entries = Vec::new();
+                if offset == 0 {
+                    entries.push((1, 1, FileType::Directory, ".".to_string()));
+                }
+                if offset <= 1 {
+                    entries.push((1, 2, FileType::Directory, "..".to_string()));
+                }
+                if offset <= 2 {
+                    entries.push((2, 3, FileType::RegularFile, "hello.txt".to_string()));
+                }
+                entries
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    async fn read(
+        &mut self,
+        ino: u64,
+        _fh: u64,
+        offset: i64,
+        _size: u32,
+        _flags: i32,
+        _lock: Option<u64>,
+    ) -> Result<&[u8], AsyncFilesystemError> {
+        if ino == 2 {
+            Ok(&HELLO_TXT_CONTENT.as_bytes()[offset as usize..])
+        } else {
+            Err(AsyncFilesystemError::GetAttrError(
+                ino,
+                "No such file or directory".to_string(),
+            ))
+        }
+    }
 }
 
 #[tokio::main]
@@ -103,10 +146,6 @@ async fn main() -> anyhow::Result<()> {
         }
         _ = sig_term.recv() => {
             info!("Received SIGTERM, sending unmount signal");
-            stop_sender.send(()).unwrap();
-        }
-        _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
-            info!("Unmounting after 10 seconds");
             stop_sender.send(()).unwrap();
         }
     };

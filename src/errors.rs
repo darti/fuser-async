@@ -9,4 +9,7 @@ pub enum AsyncFilesystemError {
 
     #[error("Getattr error for ino {0}: {1}")]
     GetAttrError(u64, String),
+
+    #[error("Getattr error for ino {0}: {1}")]
+    ReadError(u64, String),
 }
