@@ -8,4 +8,4 @@ impl StaticFs {
     }
 }
 
-impl AsyncFilesystem for StaticFs {}
+// impl AsyncFilesystem for StaticFs {}

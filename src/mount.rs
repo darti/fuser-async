@@ -1,8 +1,11 @@
 use std::{future::Future, path::Path};
 
-use fuser::{MountOption, Session};
+use fuser::MountOption;
 use log::info;
-use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::{
+    runtime::Handle,
+    sync::mpsc::{self, UnboundedSender},
+};
 
 use crate::{
     async_filesystem::{AsyncFilesystem, AsyncFsImpl},
@@ -15,7 +18,7 @@ pub fn spawn_mount<'a, FS: AsyncFilesystem + Send + 'static + 'a, P: AsRef<Path>
     options: &[MountOption],
 ) -> Result<(UnboundedSender<()>, impl Future<Output = ()>), AsyncFilesystemError> {
     // check_option_conflicts(options)?;
-    let afs = AsyncFsImpl::new(filesystem);
+    let afs = AsyncFsImpl::new(filesystem, Handle::current());
 
     let bs = fuser::spawn_mount2(afs, mountpoint, options)
         .map_err(|e| AsyncFilesystemError::MountError(e))?;
