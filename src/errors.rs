@@ -1,4 +1,4 @@
-use std::io;
+use std::{ffi::OsString, io};
 
 use thiserror::Error;
 
@@ -12,4 +12,7 @@ pub enum AsyncFilesystemError {
 
     #[error("Getattr error for ino {0}: {1}")]
     ReadError(u64, String),
+
+    #[error("invalid utf8: {0:?}")]
+    InvalidUtf8(OsString),
 }

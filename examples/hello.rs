@@ -72,10 +72,10 @@ impl AsyncFilesystem for SimpleFS {
     async fn lookup(
         &mut self,
         parent: u64,
-        name: &std::ffi::OsStr,
+        name: &str,
     ) -> Result<(Duration, FileAttr, u64), AsyncFilesystemError> {
-        match (parent, name.to_str()) {
-            (1, Some("hello.txt")) => Ok((TTL, HELLO_TXT_ATTR, 2)),
+        match (parent, name) {
+            (1, "hello.txt") => Ok((TTL, HELLO_TXT_ATTR, 2)),
             _ => Err(AsyncFilesystemError::GetAttrError(
                 parent,
                 "No such file or directory".to_string(),

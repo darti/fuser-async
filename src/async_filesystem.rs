@@ -13,7 +13,7 @@ pub trait AsyncFilesystem {
     async fn lookup(
         &mut self,
         parent: u64,
-        name: &OsStr,
+        name: &str,
     ) -> Result<(Duration, FileAttr, u64), AsyncFilesystemError>;
 
     async fn readdir(
@@ -71,7 +71,12 @@ where
         name: &std::ffi::OsStr,
         reply: fuser::ReplyEntry,
     ) {
-        match self.rt.block_on(self.fs.lookup(parent, name)) {
+        let r = name
+            .to_str()
+            .ok_or_else(|| AsyncFilesystemError::InvalidUtf8(name.to_os_string()))
+            .and_then(|n| self.rt.block_on(self.fs.lookup(parent, n)));
+
+        match r {
             Ok((ttl, attr, generation)) => reply.entry(&ttl, &attr, generation),
             Err(_e) => {
                 reply.error(libc::ENOENT);
