@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, time::Duration};
+use std::{error::Error, time::Duration};
 
 use async_trait::async_trait;
 use fuser::{FileAttr, FileType, Filesystem};
@@ -8,30 +8,31 @@ use crate::errors::AsyncFilesystemError;
 
 #[async_trait]
 pub trait AsyncFilesystem {
-    async fn getattr(&mut self, ino: u64) -> Result<(Duration, FileAttr), AsyncFilesystemError>;
+    type Error;
+    async fn getattr(&self, ino: u64) -> Result<(Duration, FileAttr), Self::Error>;
 
     async fn lookup(
-        &mut self,
+        &self,
         parent: u64,
         name: &str,
-    ) -> Result<(Duration, FileAttr, u64), AsyncFilesystemError>;
+    ) -> Result<(Duration, FileAttr, u64), Self::Error>;
 
     async fn readdir(
-        &mut self,
+        &self,
         ino: u64,
         fh: u64,
         offset: i64,
-    ) -> Result<Vec<(u64, i64, FileType, String)>, AsyncFilesystemError>;
+    ) -> Result<Vec<(u64, i64, FileType, String)>, Self::Error>;
 
     async fn read(
-        &mut self,
+        &self,
         ino: u64,
         fh: u64,
         offset: i64,
         size: u32,
         flags: i32,
         lock: Option<u64>,
-    ) -> Result<&[u8], AsyncFilesystemError>;
+    ) -> Result<&[u8], Self::Error>;
 }
 
 pub(crate) struct AsyncFsImpl<FS>
@@ -73,14 +74,15 @@ where
     ) {
         let r = name
             .to_str()
-            .ok_or_else(|| AsyncFilesystemError::InvalidUtf8(name.to_os_string()))
-            .and_then(|n| self.rt.block_on(self.fs.lookup(parent, n)));
+            .map(|n| self.rt.block_on(self.fs.lookup(parent, n)));
 
         match r {
-            Ok((ttl, attr, generation)) => reply.entry(&ttl, &attr, generation),
-            Err(_e) => {
+            Some(Ok((ttl, attr, generation))) => reply.entry(&ttl, &attr, generation),
+
+            Some(Err(_e)) => {
                 reply.error(libc::ENOENT);
             }
+            None => reply.error(libc::ENOENT),
         }
     }
 

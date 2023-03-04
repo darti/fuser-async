@@ -1,2 +1,2 @@
 [workspace]
-members = ["fuser-async"]
+members = ["fuser-async", "fuser-datafusion"]

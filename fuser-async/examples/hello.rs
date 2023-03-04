@@ -58,7 +58,8 @@ struct SimpleFS {}
 
 #[async_trait]
 impl AsyncFilesystem for SimpleFS {
-    async fn getattr(&mut self, ino: u64) -> Result<(Duration, FileAttr), AsyncFilesystemError> {
+    type Error = AsyncFilesystemError;
+    async fn getattr(&self, ino: u64) -> Result<(Duration, FileAttr), AsyncFilesystemError> {
         match ino {
             1 => Ok((TTL, HELLO_DIR_ATTR)),
             2 => Ok((TTL, HELLO_TXT_ATTR)),
@@ -70,7 +71,7 @@ impl AsyncFilesystem for SimpleFS {
     }
 
     async fn lookup(
-        &mut self,
+        &self,
         parent: u64,
         name: &str,
     ) -> Result<(Duration, FileAttr, u64), AsyncFilesystemError> {
@@ -84,7 +85,7 @@ impl AsyncFilesystem for SimpleFS {
     }
 
     async fn readdir(
-        &mut self,
+        &self,
         ino: u64,
         _fh: u64,
         offset: i64,
@@ -111,7 +112,7 @@ impl AsyncFilesystem for SimpleFS {
     }
 
     async fn read(
-        &mut self,
+        &self,
         ino: u64,
         _fh: u64,
         offset: i64,

@@ -1,0 +1,3 @@
+ino,id,type,name,parent_ino
+1, 1,Directory,".",1
+1, 1,Directory,"..",1
