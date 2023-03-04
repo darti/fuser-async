@@ -1,10 +1,8 @@
-use std::{error::Error, time::Duration};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use fuser::{FileAttr, FileType, Filesystem};
 use tokio::runtime::Handle;
-
-use crate::errors::AsyncFilesystemError;
 
 #[async_trait]
 pub trait AsyncFilesystem {

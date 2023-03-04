@@ -17,6 +17,6 @@ lazy_static! {
     pub static ref CONTENT_SCHEMA: SchemaRef = SchemaRef::new(Schema::new(vec![
         Field::new("ino", DataType::UInt64, false),
         Field::new("size", DataType::UInt64, false),
-        Field::new("content", DataType::Binary, true),
+        Field::new("content", DataType::LargeBinary, true),
     ]));
 }
