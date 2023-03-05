@@ -1,53 +1,15 @@
 use std::sync::Arc;
 
-use base64::{decoded_len_estimate, prelude::*};
 use datafusion::{
-    arrow::{
-        array::{ArrayData, ArrayDataBuilder, ArrayRef, UInt64Array},
-        buffer::Buffer,
-        datatypes::DataType,
-    },
-    common::cast::as_string_array,
-    logical_expr::Volatility,
-    physical_plan::functions::make_scalar_function,
-    prelude::*,
+    arrow::datatypes::DataType, logical_expr::Volatility,
+    physical_plan::functions::make_scalar_function, prelude::*,
 };
-use fuser_datafusion::{BinArray, BINARY_TYPE, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE};
+use fuser_datafusion::{
+    helpers::{binary_size, to_binary},
+    BINARY_TYPE, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE,
+};
 
 use pretty_env_logger::env_logger::{Builder, Env};
-
-fn to_binary(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
-    let s = as_string_array(&args[0]).expect("cast failed");
-
-    let mut buffer: Vec<u8> = vec![];
-
-    match s.iter().next() {
-        Some(Some(v)) => {
-            buffer = vec![0; decoded_len_estimate(v.len())];
-            let data = BASE64_STANDARD_NO_PAD
-                .decode_slice(v, &mut buffer)
-                .expect("decode failed");
-            Some(data)
-        }
-        _ => None,
-    };
-
-    Ok(Arc::new(BinArray::from_vec(vec![buffer.as_slice()])) as ArrayRef)
-}
-
-fn binary_size(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
-    let s = args[0]
-        .as_any()
-        .downcast_ref::<BinArray>()
-        .expect("cast failed");
-
-    let array = s
-        .iter()
-        .map(|v| v.map(|v| v.len() as u64))
-        .collect::<UInt64Array>();
-
-    Ok(Arc::new(array) as ArrayRef)
-}
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
