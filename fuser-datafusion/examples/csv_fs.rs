@@ -2,15 +2,17 @@ use std::sync::Arc;
 
 use datafusion::{
     arrow::{
-        array::{ArrayRef, BinaryArray, LargeBinaryArray, UInt64Array},
+        array::{ArrayRef, UInt64Array},
         datatypes::DataType,
     },
-    common::cast::{as_binary_array, as_string_array},
+    common::cast::as_string_array,
     logical_expr::Volatility,
-    physical_plan::{functions::make_scalar_function, ColumnarValue},
+    physical_plan::functions::make_scalar_function,
     prelude::*,
 };
-use fuser_datafusion::{CONTENT_SCHEMA, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE};
+use fuser_datafusion::{BinArray, BINARY_TYPE, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE};
+
+use pretty_env_logger::env_logger::{Builder, Env};
 
 fn to_binary(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
     let s = as_string_array(&args[0]).expect("cast failed");
@@ -18,13 +20,16 @@ fn to_binary(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
     let array = s
         .iter()
         .map(|v| v.map(|v| v.as_bytes()))
-        .collect::<BinaryArray>();
+        .collect::<BinArray>();
 
     Ok(Arc::new(array) as ArrayRef)
 }
 
 fn binary_size(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
-    let s = as_binary_array(&args[0]).expect("cast failed");
+    let s = args[0]
+        .as_any()
+        .downcast_ref::<BinArray>()
+        .expect("cast failed");
 
     let array = s
         .iter()
@@ -36,19 +41,21 @@ fn binary_size(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
+    Builder::from_env(Env::new().default_filter_or("info")).init();
+
     let ctx = SessionContext::new();
 
     ctx.register_udf(create_udf(
         "to_binary",
         vec![DataType::Utf8],
-        Arc::new(DataType::Binary),
+        Arc::new(BINARY_TYPE),
         Volatility::Immutable,
         make_scalar_function(to_binary),
     ));
 
     ctx.register_udf(create_udf(
         "binary_size",
-        vec![DataType::Binary],
+        vec![BINARY_TYPE],
         Arc::new(DataType::UInt64),
         Volatility::Immutable,
         make_scalar_function(binary_size),
