@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use base64::{decoded_len_estimate, prelude::*};
 use datafusion::{
     arrow::{
-        array::{ArrayRef, UInt64Array},
+        array::{ArrayData, ArrayDataBuilder, ArrayRef, UInt64Array},
+        buffer::Buffer,
         datatypes::DataType,
     },
     common::cast::as_string_array,
@@ -17,12 +19,20 @@ use pretty_env_logger::env_logger::{Builder, Env};
 fn to_binary(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
     let s = as_string_array(&args[0]).expect("cast failed");
 
-    let array = s
-        .iter()
-        .map(|v| v.map(|v| v.as_bytes()))
-        .collect::<BinArray>();
+    let mut buffer: Vec<u8> = vec![];
 
-    Ok(Arc::new(array) as ArrayRef)
+    match s.iter().next() {
+        Some(Some(v)) => {
+            buffer = vec![0; decoded_len_estimate(v.len())];
+            let data = BASE64_STANDARD_NO_PAD
+                .decode_slice(v, &mut buffer)
+                .expect("decode failed");
+            Some(data)
+        }
+        _ => None,
+    };
+
+    Ok(Arc::new(BinArray::from_vec(vec![buffer.as_slice()])) as ArrayRef)
 }
 
 fn binary_size(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
