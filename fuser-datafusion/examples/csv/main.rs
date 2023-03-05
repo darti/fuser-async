@@ -1,12 +1,20 @@
 use datafusion::prelude::*;
-use fuser_datafusion::{helpers::create_context, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE};
+use fuser_async::mount::spawn_mount;
+use fuser_datafusion::{
+    helpers::create_context, DatafusionFs, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE,
+};
 
+use log::info;
 use pretty_env_logger::env_logger::{Builder, Env};
+use tokio::{
+    select,
+    signal::{
+        self,
+        unix::{signal, SignalKind},
+    },
+};
 
-#[tokio::main]
-pub async fn main() -> anyhow::Result<()> {
-    Builder::from_env(Env::new().default_filter_or("info")).init();
-
+async fn load_fs() -> datafusion::error::Result<SessionContext> {
     let ctx = create_context();
 
     ctx.register_csv(
@@ -33,15 +41,34 @@ pub async fn main() -> anyhow::Result<()> {
 
     ctx.register_table(CONTENT_TABLE, content.into_view())?;
 
-    ctx.sql("SELECT * FROM metadata LIMIT 10")
-        .await?
-        .show()
-        .await?;
+    Ok(ctx)
+}
 
-    ctx.sql("SELECT * FROM content LIMIT 10")
-        .await?
-        .show()
-        .await?;
+#[tokio::main]
+pub async fn main() -> anyhow::Result<()> {
+    Builder::from_env(Env::new().default_filter_or("info")).init();
+
+    let ctx = load_fs().await?;
+    let fs = DatafusionFs::new(ctx);
+    let mountpoint = tempfile::tempdir().unwrap();
+
+    let (stop_sender, umount) =
+        spawn_mount(fs, mountpoint, &[]).expect("Failed to mount filesystem");
+
+    tokio::spawn(umount);
+
+    let mut sig_term = signal(SignalKind::terminate())?;
+
+    select! {
+        _ = signal::ctrl_c() => {
+            info!("Received Ctrl-C, sending unmount signals");
+            stop_sender.send(()).unwrap();
+        }
+        _ = sig_term.recv() => {
+            info!("Received SIGTERM, sending unmount signal");
+            stop_sender.send(()).unwrap();
+        }
+    };
 
     Ok(())
 }
