@@ -2,11 +2,39 @@ use std::sync::Arc;
 
 use base64::{decoded_len_estimate, prelude::*};
 use datafusion::{
-    arrow::array::{ArrayRef, UInt64Array},
+    arrow::{
+        array::{ArrayRef, UInt64Array},
+        datatypes::DataType,
+    },
     common::cast::as_string_array,
+    logical_expr::Volatility,
+    physical_plan::functions::make_scalar_function,
+    prelude::{create_udf, SessionContext},
 };
 
-use crate::BinArray;
+use crate::{BinArray, BINARY_TYPE};
+
+pub fn create_context() -> SessionContext {
+    let ctx = SessionContext::new();
+
+    ctx.register_udf(create_udf(
+        "to_binary",
+        vec![DataType::Utf8],
+        Arc::new(BINARY_TYPE),
+        Volatility::Immutable,
+        make_scalar_function(to_binary),
+    ));
+
+    ctx.register_udf(create_udf(
+        "binary_size",
+        vec![BINARY_TYPE],
+        Arc::new(DataType::UInt64),
+        Volatility::Immutable,
+        make_scalar_function(binary_size),
+    ));
+
+    ctx
+}
 
 pub fn to_binary(args: &[ArrayRef]) -> datafusion::error::Result<ArrayRef> {
     let s = as_string_array(&args[0]).expect("cast failed");

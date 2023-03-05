@@ -1,13 +1,5 @@
-use std::sync::Arc;
-
-use datafusion::{
-    arrow::datatypes::DataType, logical_expr::Volatility,
-    physical_plan::functions::make_scalar_function, prelude::*,
-};
-use fuser_datafusion::{
-    helpers::{binary_size, to_binary},
-    BINARY_TYPE, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE,
-};
+use datafusion::prelude::*;
+use fuser_datafusion::{helpers::create_context, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE};
 
 use pretty_env_logger::env_logger::{Builder, Env};
 
@@ -15,23 +7,7 @@ use pretty_env_logger::env_logger::{Builder, Env};
 pub async fn main() -> anyhow::Result<()> {
     Builder::from_env(Env::new().default_filter_or("info")).init();
 
-    let ctx = SessionContext::new();
-
-    ctx.register_udf(create_udf(
-        "to_binary",
-        vec![DataType::Utf8],
-        Arc::new(BINARY_TYPE),
-        Volatility::Immutable,
-        make_scalar_function(to_binary),
-    ));
-
-    ctx.register_udf(create_udf(
-        "binary_size",
-        vec![BINARY_TYPE],
-        Arc::new(DataType::UInt64),
-        Volatility::Immutable,
-        make_scalar_function(binary_size),
-    ));
+    let ctx = create_context();
 
     ctx.register_csv(
         METADATA_TABLE,
