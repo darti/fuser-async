@@ -1,12 +1,13 @@
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
 use async_trait::async_trait;
 use fuser::{FileAttr, FileType, Filesystem};
+use log::{debug, error};
 use tokio::runtime::Handle;
 
 #[async_trait]
 pub trait AsyncFilesystem {
-    type Error;
+    type Error: fmt::Debug;
     async fn getattr(&self, ino: u64) -> Result<(Duration, FileAttr), Self::Error>;
 
     async fn lookup(
@@ -56,8 +57,12 @@ where
 {
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
         match self.rt.block_on(self.fs.getattr(ino)) {
-            Ok((ttl, attr)) => reply.attr(&ttl, &attr),
-            Err(_e) => {
+            Ok((ttl, attr)) => {
+                debug!("getattr({}) = {:?}", ino, attr);
+                reply.attr(&ttl, &attr)
+            }
+            Err(e) => {
+                error!("getattr({}) failed: {:?}", ino, e);
                 reply.error(libc::ENOENT);
             }
         }
@@ -74,10 +79,13 @@ where
             .to_str()
             .map(|n| self.rt.block_on(self.fs.lookup(parent, n)));
 
+        debug!("lookup({:?}) = {:?}", name, r);
+
         match r {
             Some(Ok((ttl, attr, generation))) => reply.entry(&ttl, &attr, generation),
 
-            Some(Err(_e)) => {
+            Some(Err(e)) => {
+                error!("lookup({:?}) failed: {:?}", name, e);
                 reply.error(libc::ENOENT);
             }
             None => reply.error(libc::ENOENT),
@@ -94,15 +102,19 @@ where
     ) {
         match self.rt.block_on(self.fs.readdir(ino, fh, offset)) {
             Ok(entries) => {
-                for (ino, offset, kind, name) in entries {
-                    if reply.add(ino, offset, kind, name) {
+                debug!("readdir({}) = {:?}", ino, entries);
+                for (ino, o, kind, name) in entries {
+                    if reply.add(ino, o, kind, name) {
                         break;
                     }
                 }
 
                 reply.ok();
             }
-            Err(_) => reply.error(libc::ENOENT),
+            Err(e) => {
+                error!("readdir({}) failed: {:?}", ino, e);
+                reply.error(libc::ENOENT)
+            }
         }
     }
 
@@ -122,7 +134,10 @@ where
             .block_on(self.fs.read(ino, fh, offset, size, flags, lock_owner))
         {
             Ok(data) => reply.data(data),
-            Err(_) => reply.error(libc::ENOENT),
+            Err(e) => {
+                error!("read({}) failed: {:?}", ino, e);
+                reply.error(libc::ENOENT);
+            }
         }
     }
 }

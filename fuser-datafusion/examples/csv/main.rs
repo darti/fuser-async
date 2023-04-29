@@ -5,7 +5,7 @@ use fuser_datafusion::{
 };
 
 use log::info;
-use pretty_env_logger::env_logger::{Builder, Env};
+
 use tokio::{
     select,
     signal::{
@@ -46,11 +46,13 @@ async fn load_fs() -> datafusion::error::Result<SessionContext> {
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
-    Builder::from_env(Env::new().default_filter_or("info")).init();
+    pretty_env_logger::init();
 
     let ctx = load_fs().await?;
     let fs = DatafusionFs::new(ctx);
     let mountpoint = tempfile::tempdir().unwrap();
+
+    info!("Mounting filesystem at {}", mountpoint.path().display());
 
     let (stop_sender, umount) =
         spawn_mount(fs, mountpoint, &[]).expect("Failed to mount filesystem");
