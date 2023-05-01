@@ -60,8 +60,17 @@ impl AsyncFilesystem for DatafusionFs {
         debug!("lookup({}, {})", parent, name);
 
         let query = format!(
-            "SELECT ino, type FROM {} WHERE name = '{}'  and parent_ino = {} LIMIT 1",
-            METADATA_TABLE, name, parent
+            r#"
+            SELECT
+            metadata.ino, 
+            type,
+            size
+            FROM metadata 
+            LEFT JOIN content ON metadata.ino = content.ino 
+            WHERE 
+            name = '{}' 
+            and parent_ino = {} LIMIT 1"#,
+            name, parent
         );
 
         let batches = self.ctx.sql(&query).await?.collect().await?;
@@ -131,7 +140,7 @@ impl AsyncFilesystem for DatafusionFs {
             .content(1)
             .flatten()
             .next()
-            .map(|c| c.to_vec())
+            .map(|c| c[offset as usize..size as usize].to_vec())
             .ok_or(DatafusionFsError::NotFound)
     }
 }

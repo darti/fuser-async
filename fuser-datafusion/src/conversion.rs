@@ -84,27 +84,34 @@ pub fn to_file_attr(batches: Vec<RecordBatch>) -> Result<(Duration, FileAttr), D
     for batch in batches {
         let inos = batch.column(0).as_any().downcast_ref::<UInt64Array>();
         let kinds = batch.column(1).as_any().downcast_ref::<StringArray>();
-        let sizes = batch.column(0).as_any().downcast_ref::<UInt64Array>();
+        let sizes = batch.column(2).as_any().downcast_ref::<UInt64Array>();
 
         if let (Some(inos), Some(kinds), Some(sizes)) = (inos, kinds, sizes) {
             for (ino, kind, size) in izip!(inos, kinds, sizes) {
                 if let (Some(ino), Some(kind)) = (ino, kind.and_then(parse_file_type)) {
+                    let size = size.unwrap_or(0);
+                    let blksize = 512;
+                    let blocks = (size + blksize - 1) / blksize;
+
                     let attr = FileAttr {
-                        ino: ino,
-                        size: size.unwrap_or(0),
-                        blocks: 1,
+                        ino,
+                        size,
+                        blocks,
                         atime: UNIX_EPOCH, // 1970-01-01 00:00:00
                         mtime: UNIX_EPOCH,
                         ctime: UNIX_EPOCH,
                         crtime: UNIX_EPOCH,
-                        kind: kind,
-                        perm: 0o755,
-                        nlink: 2,
+                        kind,
+                        perm: match kind {
+                            FileType::Directory => 0o755,
+                            _ => 0o644,
+                        },
+                        nlink: 1,
                         uid: 501,
                         gid: 20,
                         rdev: 0,
                         flags: 0,
-                        blksize: 512,
+                        blksize: blksize as u32,
                     };
 
                     return Ok((Duration::from_secs(3600), attr));
@@ -112,5 +119,6 @@ pub fn to_file_attr(batches: Vec<RecordBatch>) -> Result<(Duration, FileAttr), D
             }
         }
     }
+
     return Err(DatafusionFsError::NotFound);
 }

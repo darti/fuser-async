@@ -59,7 +59,7 @@ pub async fn main() -> anyhow::Result<()> {
         MountOption::FSName("datafusion".to_string()),
         MountOption::AutoUnmount,
         MountOption::AllowRoot,
-        MountOption::CUSTOM("volname=DatafusionFSmoin".to_string()),
+        MountOption::CUSTOM("volname=DatafusionFS".to_string()),
     ];
 
     let umount = spawn_mount(fs, mountpoint, &options).expect("Failed to mount filesystem");
