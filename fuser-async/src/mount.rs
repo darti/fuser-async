@@ -2,10 +2,7 @@ use std::{future::Future, path::Path};
 
 use fuser::MountOption;
 use log::info;
-use tokio::{
-    runtime::Handle,
-    sync::mpsc::{self, UnboundedSender},
-};
+use tokio::runtime::Handle;
 
 use crate::{
     async_filesystem::{AsyncFilesystem, AsyncFsImpl},

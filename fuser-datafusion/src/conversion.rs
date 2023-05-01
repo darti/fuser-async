@@ -7,9 +7,8 @@ use datafusion::arrow::{
 
 use fuser_async::fuser::{FileAttr, FileType};
 use itertools::izip;
-use log::info;
 
-use crate::{errors::DatafusionFsError, BinArray, BINARY_TYPE};
+use crate::{errors::DatafusionFsError, BinArray};
 
 pub trait BatchesIterators {
     fn inos(&self, column: usize) -> Box<dyn Iterator<Item = Option<u64>> + '_>;

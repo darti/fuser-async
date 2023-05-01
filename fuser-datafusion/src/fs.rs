@@ -8,7 +8,7 @@ use fuser_async::{
     fuser::{FileAttr, FileType},
 };
 use itertools::izip;
-use log::{debug, info};
+use log::debug;
 
 use crate::{
     conversion::{to_file_attr, BatchesIterators},
