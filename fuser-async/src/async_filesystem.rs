@@ -31,7 +31,7 @@ pub trait AsyncFilesystem {
         size: u32,
         flags: i32,
         lock: Option<u64>,
-    ) -> Result<&[u8], Self::Error>;
+    ) -> Result<Vec<u8>, Self::Error>;
 }
 
 pub(crate) struct AsyncFsImpl<FS>
@@ -133,7 +133,7 @@ where
             .rt
             .block_on(self.fs.read(ino, fh, offset, size, flags, lock_owner))
         {
-            Ok(data) => reply.data(data),
+            Ok(data) => reply.data(&data),
             Err(e) => {
                 error!("read({}) failed: {:?}", ino, e);
                 reply.error(libc::ENOENT);

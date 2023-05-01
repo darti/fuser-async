@@ -1,5 +1,5 @@
 use datafusion::prelude::*;
-use fuser_async::mount::spawn_mount;
+use fuser_async::{fuser::MountOption, mount::spawn_mount};
 use fuser_datafusion::{
     helpers::create_context, DatafusionFs, CONTENT_TABLE, METADATA_SCHEMA, METADATA_TABLE,
 };
@@ -54,23 +54,36 @@ pub async fn main() -> anyhow::Result<()> {
 
     info!("Mounting filesystem at {}", mountpoint.path().display());
 
-    let (stop_sender, umount) =
-        spawn_mount(fs, mountpoint, &[]).expect("Failed to mount filesystem");
+    let options = vec![
+        MountOption::RO,
+        MountOption::FSName("datafusion".to_string()),
+        MountOption::AutoUnmount,
+        MountOption::AllowRoot,
+        MountOption::CUSTOM("volname=DatafusionFSmoin".to_string()),
+    ];
 
-    tokio::spawn(umount);
+    let umount = spawn_mount(fs, mountpoint, &options).expect("Failed to mount filesystem");
+
+    // let umount_handle = tokio::spawn(umount);
 
     let mut sig_term = signal(SignalKind::terminate())?;
 
     select! {
         _ = signal::ctrl_c() => {
             info!("Received Ctrl-C, sending unmount signals");
-            stop_sender.send(()).unwrap();
+            // stop_sender.send(()).unwrap();
+            // umount_handle.await?;
+            info!("Unmounted filesystem");
         }
         _ = sig_term.recv() => {
             info!("Received SIGTERM, sending unmount signal");
-            stop_sender.send(()).unwrap();
+            // stop_sender.send(()).unwrap();
+            // umount_handle.await?;
+            info!("Unmounted filesystem");
         }
     };
+
+    umount.await;
 
     Ok(())
 }

@@ -9,13 +9,15 @@ use fuser_async::fuser::{FileAttr, FileType};
 use itertools::izip;
 use log::info;
 
-use crate::errors::DatafusionFsError;
+use crate::{errors::DatafusionFsError, BinArray, BINARY_TYPE};
 
 pub trait BatchesIterators {
     fn inos(&self, column: usize) -> Box<dyn Iterator<Item = Option<u64>> + '_>;
     fn kinds(&self, column: usize) -> Box<dyn Iterator<Item = Option<FileType>> + '_>;
 
     fn names(&self, column: usize) -> Box<dyn Iterator<Item = Option<&str>> + '_>;
+
+    fn content(&self, column: usize) -> Box<dyn Iterator<Item = Option<&[u8]>> + '_>;
 }
 
 impl BatchesIterators for Vec<RecordBatch> {
@@ -51,6 +53,15 @@ impl BatchesIterators for Vec<RecordBatch> {
         let r = self
             .iter()
             .flat_map(move |batch| batch.column(column).as_any().downcast_ref::<StringArray>())
+            .flat_map(|array| array.iter());
+
+        Box::new(r)
+    }
+
+    fn content(&self, column: usize) -> Box<dyn Iterator<Item = Option<&[u8]>> + '_> {
+        let r = self
+            .iter()
+            .flat_map(move |batch| batch.column(column).as_any().downcast_ref::<BinArray>())
             .flat_map(|array| array.iter());
 
         Box::new(r)

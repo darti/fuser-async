@@ -112,12 +112,26 @@ impl AsyncFilesystem for DatafusionFs {
         size: u32,
         flags: i32,
         lock: Option<u64>,
-    ) -> Result<&[u8], Self::Error> {
+    ) -> Result<Vec<u8>, Self::Error> {
         debug!(
             "read({}, {},  {}, {}, {:?})",
             ino, offset, size, flags, lock
         );
 
-        Err(DatafusionFsError::NotImplemented)
+        let query = format!(
+            "SELECT size, content FROM {} WHERE ino = {} LIMIT 1",
+            CONTENT_TABLE, ino
+        );
+
+        self.ctx
+            .sql(&query)
+            .await?
+            .collect()
+            .await?
+            .content(1)
+            .flatten()
+            .next()
+            .map(|c| c.to_vec())
+            .ok_or(DatafusionFsError::NotFound)
     }
 }

@@ -119,9 +119,9 @@ impl AsyncFilesystem for SimpleFS {
         _size: u32,
         _flags: i32,
         _lock: Option<u64>,
-    ) -> Result<&[u8], AsyncFilesystemError> {
+    ) -> Result<Vec<u8>, AsyncFilesystemError> {
         if ino == 2 {
-            Ok(&HELLO_TXT_CONTENT.as_bytes()[offset as usize..])
+            Ok(HELLO_TXT_CONTENT.as_bytes()[offset as usize..].to_vec())
         } else {
             Err(AsyncFilesystemError::GetAttrError(
                 ino,
@@ -136,23 +136,20 @@ async fn main() -> anyhow::Result<()> {
     Builder::from_env(Env::new().default_filter_or("info")).init();
     let mountpoint = tempfile::tempdir().unwrap();
 
-    let (stop_sender, umount) =
-        spawn_mount(SimpleFS {}, mountpoint, &[]).expect("Failed to mount filesystem");
-
-    tokio::spawn(umount);
+    let umount = spawn_mount(SimpleFS {}, mountpoint, &[]).expect("Failed to mount filesystem");
 
     let mut sig_term = signal(SignalKind::terminate())?;
 
     select! {
         _ = signal::ctrl_c() => {
             info!("Received Ctrl-C, sending unmount signals");
-            stop_sender.send(()).unwrap();
         }
         _ = sig_term.recv() => {
             info!("Received SIGTERM, sending unmount signal");
-            stop_sender.send(()).unwrap();
         }
     };
+
+    umount.await;
 
     Ok(())
 }
