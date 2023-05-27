@@ -1,5 +1,5 @@
 [workspace]
-members = ["fuser-async", "fuser-datafusion"]
+members = ["fuser-async", "fuser-datafusion", "rmk-detection", "rmk-cli"]
 resolver = "2"
 
 [workspace.dependencies]
