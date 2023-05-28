@@ -16,7 +16,15 @@ lazy_static! {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Configuration {
-    ip: String,
+    pub device: DeviceConfiguration,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct DeviceConfiguration {
+    pub ip: String,
+    pub port: u16,
+    pub login: String,
+    pub password: String,
 }
 
 pub struct Settings {
@@ -96,7 +104,7 @@ impl Settings {
         .expect("Failed to write config");
     }
 
-    pub fn ip(&self) -> &str {
-        self.config.ip.as_str()
+    pub fn config(&self) -> &Configuration {
+        &self.config
     }
 }

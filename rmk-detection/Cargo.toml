@@ -10,3 +10,8 @@ rusb = "0.9.2"
 thiserror.workspace = true
 log.workspace = true
 tokio.workspace = true
+
+# async-ssh2-tokio = "0.6"
+russh = "0.37"
+async-trait = "0.1.68"
+russh-keys = "0.37.1"

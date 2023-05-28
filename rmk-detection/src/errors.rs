@@ -7,4 +7,6 @@ pub enum RmkDetectionError {
 
     #[error(transparent)]
     LibUsbError(#[from] rusb::Error),
+    #[error(transparent)]
+    SSHError(#[from] russh::Error),
 }

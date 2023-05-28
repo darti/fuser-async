@@ -1,1 +1,8 @@
+[device]
 ip = "10.11.99.1"
+port = 22
+login = "root"
+password = "FbJUzTr4zr"
+
+[remarkable]
+base = "/home/root/.local/share/remarkable/xochitl"

@@ -1,7 +1,11 @@
-use log::info;
+use log::{debug, error, info};
 use pretty_env_logger::env_logger::{Builder, Env};
 
-use rmk_detection::watcher::create_watcher;
+use rmk_cli::config::SETTINGS;
+use rmk_detection::{
+    connector::connect,
+    watcher::{create_watcher, DeviceEvent},
+};
 use tokio::{
     select,
     signal::{
@@ -31,8 +35,29 @@ async fn main() -> anyhow::Result<()> {
                 break;
             }
             e = rx_device.recv() => {
-            info!("Received device event: {:?}", e);
+                debug!("Received device event: {:?}", e);
+
+                match e {
+                    Ok(DeviceEvent::Connection(b)) => {
+                        info!("Connected to device: {:?}", b);
+                        let client = connect(
+                            &SETTINGS.config().device.ip,
+                            SETTINGS.config().device.port,
+                            &SETTINGS.config().device.login,
+                            &SETTINGS.config().device.password).await?;
+
+                        // let r = client.execute("ls ").await?;
+                        // info!("Received: {:?}", r);
+                    }
+                    Ok(DeviceEvent::Disconnection(b)) => {
+                        info!("Disconnected from device: {:?}", b);
+                    }
+                    Err(e) => {
+                        error!("Error receiving device event: {:?}", e);
+                    }
+                }
             }
+
         }
     }
 
