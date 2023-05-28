@@ -12,3 +12,9 @@ log.workspace = true
 tokio.workspace = true
 
 rmk-detection = { version = "0.1.0", path = "../rmk-detection" }
+
+config = { version = "0.13", features = ["toml"] }
+directories = "5.0.1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.7"
+lazy_static = "1.4.0"
