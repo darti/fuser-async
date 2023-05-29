@@ -1,6 +1,12 @@
 [workspace]
-members = ["fuser-async", "fuser-datafusion", "rmk-detection"]
+members = ["fuser_async", "fuser_datafusion", "rmk_device", "rmk_format"]
 resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Matthieu Dartiguenave <matthieu@dartiguenave.me>"]
+description = "Rmk fs"
 
 [workspace.dependencies]
 thiserror = "1"

@@ -1,7 +1,7 @@
 use log::{debug, error, info};
 use pretty_env_logger::env_logger::{Builder, Env};
 
-use rmk_detection::{
+use rmk_device::{
     config::SETTINGS,
     device::RmkTablet,
     watcher::{create_watcher, DeviceEvent},
@@ -47,9 +47,6 @@ async fn main() -> anyhow::Result<()> {
                         &SETTINGS.remarkable().base)?;
 
                         tablet.scan().await;
-
-                        // let r = client.execute("ls ").await?;
-                        // info!("Received: {:?}", r);
                     }
                     Ok(DeviceEvent::Disconnection(b)) => {
                         info!("Disconnected from device: {:?}", b);

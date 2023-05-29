@@ -1,7 +1,10 @@
 [package]
-name = "fuser-datafusion"
-version = "0.1.0"
-edition = "2021"
+name = "fuser_datafusion"
+
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,7 +13,7 @@ async-trait = "0.1.65"
 base64 = "0.21"
 datafusion = "25"
 
-fuser-async = { version = "*", path = "../fuser-async" }
+fuser_async = { version = "*", path = "../fuser_async" }
 itertools = "0.10"
 lazy_static = "1"
 
