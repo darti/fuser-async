@@ -12,6 +12,9 @@ description.workspace = true
 derive_builder = "0.12.0"
 
 nom = "7"
+serde.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
 
 log.workspace = true
 pretty_env_logger.workspace = true

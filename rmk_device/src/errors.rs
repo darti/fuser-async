@@ -13,4 +13,7 @@ pub enum RmkDetectionError {
 
     #[error(transparent)]
     ConfigError(#[from] config::ConfigError),
+
+    #[error(transparent)]
+    JsonError(#[from] serde_json::Error),
 }

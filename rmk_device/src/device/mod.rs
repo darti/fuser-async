@@ -1,6 +1,7 @@
 use futures::TryStreamExt;
 use log::info;
 use opendal::{services, Metakey, Operator};
+use rmk_format::metadata::RmkMetadata;
 use serde_json::Value;
 
 use crate::errors::RmkDetectionError;
@@ -30,20 +31,22 @@ impl RmkTablet {
         })
     }
 
-    pub async fn scan(&self) {
+    pub async fn scan(&self) -> Result<(), RmkDetectionError> {
         let mut ds = self.operator.list("./").await.unwrap();
 
         while let Some(de) = ds.try_next().await.unwrap() {
             let meta = self.operator.metadata(&de, Metakey::Mode).await.unwrap();
 
             if de.path().ends_with(".metadata") {
-                info!("metadata: {:?}", meta);
                 let content = self.operator.read(de.path()).await.unwrap();
+                let metadata: RmkMetadata = serde_json::from_slice(&content)?;
 
                 let v: Value = serde_json::from_slice(&content).unwrap();
 
                 info!("last modified: {:?}", v.get("lastModified"));
             }
         }
+
+        Ok(())
     }
 }

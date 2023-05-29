@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod format;
+pub mod metadata;
 mod parser;
 
 pub use parser::notebook;
