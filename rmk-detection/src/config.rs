@@ -6,8 +6,10 @@ use lazy_static::lazy_static;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
+use crate::errors::RmkDetectionError;
+
 lazy_static! {
-    pub static ref SETTINGS: Settings = Settings::new();
+    pub static ref SETTINGS: Settings = Settings::new().unwrap();
 }
 
 lazy_static! {
@@ -17,14 +19,19 @@ lazy_static! {
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Configuration {
     pub device: DeviceConfiguration,
+    pub remarkable: RemarkableConfiguration,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DeviceConfiguration {
-    pub ip: String,
-    pub port: u16,
-    pub login: String,
-    pub password: String,
+    pub endpoint: String,
+    pub user: String,
+    pub key_file: String,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct RemarkableConfiguration {
+    pub base: String,
 }
 
 pub struct Settings {
@@ -33,38 +40,30 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, RmkDetectionError> {
         let config_path = DIRS.config_dir().join("config.toml");
 
-        info!("Looking for config at: {}", config_path.to_string_lossy());
+        debug!("Looking for config at: {}", config_path.to_string_lossy());
+
+        let mut config = Config::builder().add_source(File::from_str(
+            include_str!("config/defaults.toml"),
+            FileFormat::Toml,
+        ));
 
         if config_path.exists() {
-            debug!("Found config at: {}", config_path.to_string_lossy());
-
-            let config: Configuration = Config::builder()
-                .add_source(File::from_str(
-                    include_str!("config/defaults.toml"),
-                    FileFormat::Toml,
-                ))
-                .add_source(File::from(config_path.clone()))
-                .add_source(Environment::with_prefix("rmk"))
-                .build()
-                .unwrap()
-                .try_deserialize()
-                .expect("Failed to read config");
-
-            Settings {
-                config,
-                config_path,
-            }
-        } else {
-            info!(
-                "No config at: {}, creating new",
-                config_path.to_string_lossy()
-            );
-
-            Self::init(config_path)
+            info!("Config found: {}", config_path.to_string_lossy());
+            config = config.add_source(File::from(config_path.clone()));
         }
+
+        let config = config
+            .add_source(Environment::with_prefix("rmk"))
+            .build()?
+            .try_deserialize()?;
+
+        Ok(Settings {
+            config,
+            config_path,
+        })
     }
 
     pub fn init(config_path: PathBuf) -> Settings {
@@ -106,5 +105,9 @@ impl Settings {
 
     pub fn config(&self) -> &Configuration {
         &self.config
+    }
+
+    pub fn remarkable(&self) -> &RemarkableConfiguration {
+        &self.config.remarkable
     }
 }

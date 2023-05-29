@@ -7,6 +7,10 @@ pub enum RmkDetectionError {
 
     #[error(transparent)]
     LibUsbError(#[from] rusb::Error),
+
     #[error(transparent)]
-    SSHError(#[from] russh::Error),
+    OpenDALError(#[from] opendal::Error),
+
+    #[error(transparent)]
+    ConfigError(#[from] config::ConfigError),
 }

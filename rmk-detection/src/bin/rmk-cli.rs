@@ -1,9 +1,9 @@
 use log::{debug, error, info};
 use pretty_env_logger::env_logger::{Builder, Env};
 
-use rmk_cli::config::SETTINGS;
 use rmk_detection::{
-    connector::connect,
+    config::SETTINGS,
+    device::RmkTablet,
     watcher::{create_watcher, DeviceEvent},
 };
 use tokio::{
@@ -40,11 +40,13 @@ async fn main() -> anyhow::Result<()> {
                 match e {
                     Ok(DeviceEvent::Connection(b)) => {
                         info!("Connected to device: {:?}", b);
-                        let client = connect(
-                            &SETTINGS.config().device.ip,
-                            SETTINGS.config().device.port,
-                            &SETTINGS.config().device.login,
-                            &SETTINGS.config().device.password).await?;
+                        let tablet = RmkTablet::connect(
+                            &SETTINGS.config().device.endpoint,
+                            &SETTINGS.config().device.user,
+                            &SETTINGS.config().device.key_file,
+                        &SETTINGS.remarkable().base)?;
+
+                        tablet.scan().await;
 
                         // let r = client.execute("ls ").await?;
                         // info!("Received: {:?}", r);

@@ -1,6 +1,0 @@
-{
-    "rust-analyzer.linkedProjects": [
-        "./rmk-detection/Cargo.toml",
-        "./rmk-cli/Cargo.toml"
-    ]
-}
