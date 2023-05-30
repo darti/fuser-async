@@ -1,3 +1,4 @@
+pub mod content;
 pub mod errors;
 pub mod format;
 pub mod metadata;

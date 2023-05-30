@@ -1,7 +1,7 @@
 use futures::TryStreamExt;
 use log::info;
 use opendal::{services, Metakey, Operator};
-use rmk_format::metadata::RmkMetadata;
+use rmk_format::{content::RmkContent, metadata::RmkMetadata};
 use serde_json::Value;
 
 use crate::errors::RmkDetectionError;
@@ -41,9 +41,12 @@ impl RmkTablet {
                 let content = self.operator.read(de.path()).await.unwrap();
                 let metadata: RmkMetadata = serde_json::from_slice(&content)?;
 
-                let v: Value = serde_json::from_slice(&content).unwrap();
+                info!("metadata: {:?}", metadata);
+            } else if de.path().ends_with(".content") {
+                let content = self.operator.read(de.path()).await.unwrap();
+                let content: RmkContent = serde_json::from_slice(&content)?;
 
-                info!("last modified: {:?}", v.get("lastModified"));
+                info!("content: {:?}", content);
             }
         }
 
