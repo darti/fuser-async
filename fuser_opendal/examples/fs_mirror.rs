@@ -29,9 +29,9 @@ async fn main() -> anyhow::Result<()> {
     builder.root(&args[1]);
 
     let fs = OpendalFs::new(Operator::new(builder)?.finish());
-
     let mountpoint = tempfile::tempdir().unwrap();
 
+    info!("Mounting filesystem at {}", mountpoint.path().display());
     let umount = spawn_mount(fs, mountpoint, &[]).expect("Failed to mount filesystem");
 
     let mut sig_term = signal(SignalKind::terminate())?;

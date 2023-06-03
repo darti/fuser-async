@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use fuser::{FileAttr, FileType};
 use fuser_async::{
-    async_filesystem::AsyncFilesystem, errors::AsyncFilesystemError, mount::spawn_mount,
+    async_filesystem::{AsyncFilesystem, Attr, Lookup, ReadDir},
+    errors::AsyncFilesystemError,
+    mount::spawn_mount,
 };
 use log::info;
 use pretty_env_logger::env_logger::{Builder, Env};
@@ -59,10 +61,16 @@ struct SimpleFS {}
 #[async_trait]
 impl AsyncFilesystem for SimpleFS {
     type Error = AsyncFilesystemError;
-    async fn getattr(&self, ino: u64) -> Result<(Duration, FileAttr), AsyncFilesystemError> {
+    async fn getattr(&self, ino: u64) -> Result<Attr, AsyncFilesystemError> {
         match ino {
-            1 => Ok((TTL, HELLO_DIR_ATTR)),
-            2 => Ok((TTL, HELLO_TXT_ATTR)),
+            1 => Ok(Attr {
+                ttl: TTL,
+                attr: HELLO_DIR_ATTR,
+            }),
+            2 => Ok(Attr {
+                ttl: TTL,
+                attr: HELLO_TXT_ATTR,
+            }),
             _ => Err(AsyncFilesystemError::GetAttrError(
                 ino,
                 "No such file or directory".to_string(),
@@ -70,13 +78,13 @@ impl AsyncFilesystem for SimpleFS {
         }
     }
 
-    async fn lookup(
-        &self,
-        parent: u64,
-        name: &str,
-    ) -> Result<(Duration, FileAttr, u64), AsyncFilesystemError> {
+    async fn lookup(&self, parent: u64, name: &str) -> Result<Lookup, AsyncFilesystemError> {
         match (parent, name) {
-            (1, "hello.txt") => Ok((TTL, HELLO_TXT_ATTR, 2)),
+            (1, "hello.txt") => Ok(Lookup {
+                ttl: TTL,
+                attr: HELLO_TXT_ATTR,
+                generation: 2,
+            }),
             _ => Err(AsyncFilesystemError::GetAttrError(
                 parent,
                 "No such file or directory".to_string(),
@@ -89,18 +97,33 @@ impl AsyncFilesystem for SimpleFS {
         ino: u64,
         _fh: u64,
         offset: i64,
-    ) -> Result<Vec<(u64, i64, FileType, String)>, AsyncFilesystemError> {
+    ) -> Result<Vec<ReadDir>, AsyncFilesystemError> {
         match ino {
             1 => {
                 let mut entries = Vec::new();
                 if offset == 0 {
-                    entries.push((1, 1, FileType::Directory, ".".to_string()));
+                    entries.push(ReadDir {
+                        ino: 1,
+                        offset: 1,
+                        file_type: FileType::Directory,
+                        name: ".".to_string(),
+                    });
                 }
                 if offset <= 1 {
-                    entries.push((1, 2, FileType::Directory, "..".to_string()));
+                    entries.push(ReadDir {
+                        ino: 1,
+                        offset: 2,
+                        file_type: FileType::Directory,
+                        name: "..".to_string(),
+                    });
                 }
                 if offset <= 2 {
-                    entries.push((2, 3, FileType::RegularFile, "hello.txt".to_string()));
+                    entries.push(ReadDir {
+                        ino: 2,
+                        offset: 3,
+                        file_type: FileType::RegularFile,
+                        name: "hello.txt".to_string(),
+                    });
                 }
                 Ok(entries)
             }

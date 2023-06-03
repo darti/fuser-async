@@ -3,25 +3,38 @@ use std::{fmt, time::Duration};
 use async_trait::async_trait;
 use fuser::{FileAttr, FileType, Filesystem};
 use log::{debug, error};
+
 use tokio::runtime::Handle;
+
+#[derive(Debug)]
+pub struct Attr {
+    pub ttl: Duration,
+    pub attr: FileAttr,
+}
+
+#[derive(Debug)]
+pub struct Lookup {
+    pub ttl: Duration,
+    pub attr: FileAttr,
+    pub generation: u64,
+}
+
+#[derive(Debug)]
+pub struct ReadDir {
+    pub ino: u64,
+    pub offset: i64,
+    pub file_type: FileType,
+    pub name: String,
+}
 
 #[async_trait]
 pub trait AsyncFilesystem {
     type Error: fmt::Debug;
-    async fn getattr(&self, ino: u64) -> Result<(Duration, FileAttr), Self::Error>;
+    async fn getattr(&self, ino: u64) -> Result<Attr, Self::Error>;
 
-    async fn lookup(
-        &self,
-        parent: u64,
-        name: &str,
-    ) -> Result<(Duration, FileAttr, u64), Self::Error>;
+    async fn lookup(&self, parent: u64, name: &str) -> Result<Lookup, Self::Error>;
 
-    async fn readdir(
-        &self,
-        ino: u64,
-        fh: u64,
-        offset: i64,
-    ) -> Result<Vec<(u64, i64, FileType, String)>, Self::Error>;
+    async fn readdir(&self, ino: u64, fh: u64, offset: i64) -> Result<Vec<ReadDir>, Self::Error>;
 
     async fn read(
         &self,
@@ -57,7 +70,7 @@ where
 {
     fn getattr(&mut self, _req: &fuser::Request<'_>, ino: u64, reply: fuser::ReplyAttr) {
         match self.rt.block_on(self.fs.getattr(ino)) {
-            Ok((ttl, attr)) => {
+            Ok(Attr { ttl, attr }) => {
                 debug!("getattr({}) = {:?}", ino, attr);
                 reply.attr(&ttl, &attr)
             }
@@ -82,7 +95,11 @@ where
         debug!("lookup({:?}) = {:?}", name, r);
 
         match r {
-            Some(Ok((ttl, attr, generation))) => reply.entry(&ttl, &attr, generation),
+            Some(Ok(Lookup {
+                ttl,
+                attr,
+                generation,
+            })) => reply.entry(&ttl, &attr, generation),
 
             Some(Err(e)) => {
                 error!("lookup({:?}) failed: {:?}", name, e);
@@ -103,8 +120,8 @@ where
         match self.rt.block_on(self.fs.readdir(ino, fh, offset)) {
             Ok(entries) => {
                 debug!("readdir({}) = {:?}", ino, entries);
-                for (ino, o, kind, name) in entries {
-                    if reply.add(ino, o, kind, name) {
+                for r in entries {
+                    if reply.add(r.ino, r.offset, r.file_type, r.name) {
                         break;
                     }
                 }

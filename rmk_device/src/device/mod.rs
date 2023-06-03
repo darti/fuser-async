@@ -1,8 +1,7 @@
 use datafusion::prelude::*;
 use futures::TryStreamExt;
 
-use opendal::{services, Entry, Metadata, Metakey, Operator};
-use rmk_format::{content::RmkContent, metadata::RmkMetadata};
+use opendal::{services, Metakey, Operator};
 
 use crate::errors::RmkDetectionError;
 
