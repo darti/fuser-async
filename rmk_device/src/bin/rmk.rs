@@ -40,13 +40,20 @@ async fn main() -> anyhow::Result<()> {
                 match e {
                     Ok(DeviceEvent::Connection(b)) => {
                         info!("Connected to device: {:?}", b);
-                        let tablet = RmkTablet::connect(
+                        let tablet = RmkTablet::new(
                             &SETTINGS.config().device.endpoint,
                             &SETTINGS.config().device.user,
                             &SETTINGS.config().device.key_file,
                         &SETTINGS.remarkable().base)?;
 
-                        tablet.scan().await;
+                        match tablet.scan().await {
+                            Ok(_) => {
+                                info!("Scan complete");
+                            }
+                            Err(e) => {
+                                error!("Error scanning device: {:?}", e);
+                            }
+                        }
                     }
                     Ok(DeviceEvent::Disconnection(b)) => {
                         info!("Disconnected from device: {:?}", b);

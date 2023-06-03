@@ -1,5 +1,5 @@
 [package]
-name = "fuser_datafusion"
+name = "fuser_opendal"
 
 version.workspace = true
 edition.workspace = true
@@ -9,24 +9,16 @@ description.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1.65"
-base64 = "0.21"
-datafusion = "25"
-
-fuser_async = { version = "*", path = "../fuser_async" }
-itertools = "0.10"
-lazy_static = "1"
-
 log.workspace = true
 pretty_env_logger.workspace = true
-
 thiserror.workspace = true
 
 tokio.workspace = true
+async-trait.workspace = true
+
+opendal = { version = "0.36", features = ["services-sftp"] }
+fuser_async = { version = "0.1.0", path = "../fuser_async" }
 
 [dev-dependencies]
 anyhow.workspace = true
-tempfile = "3"
-
-[features]
-large-binary = []
+tempfile.workspace = true

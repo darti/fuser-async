@@ -22,6 +22,8 @@ tokio.workspace = true
 async-trait = "0.1"
 futures = "0.3"
 
+datafusion.workspace = true
+
 opendal = { version = "0.35", features = ["services-sftp"] }
 
 lazy_static.workspace = true
@@ -32,4 +34,5 @@ serde_json.workspace = true
 
 config = { version = "0.13", features = ["toml"] }
 directories = "5.0.1"
-rmk_format = { version = "0.1.0", path = "../rmk_format" }
+
+rmk_format = { version = "*", path = "../rmk_format" }

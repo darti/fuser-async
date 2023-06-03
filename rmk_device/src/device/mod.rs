@@ -1,17 +1,18 @@
+use datafusion::prelude::*;
 use futures::TryStreamExt;
-use log::info;
-use opendal::{services, Metakey, Operator};
+
+use opendal::{services, Entry, Metadata, Metakey, Operator};
 use rmk_format::{content::RmkContent, metadata::RmkMetadata};
-use serde_json::Value;
 
 use crate::errors::RmkDetectionError;
 
 pub struct RmkTablet {
     operator: Operator,
+    ctx: SessionContext,
 }
 
 impl RmkTablet {
-    pub fn connect(
+    pub fn new(
         endpoint: &str,
         user: &str,
         key_file: &str,
@@ -28,8 +29,32 @@ impl RmkTablet {
 
         Ok(RmkTablet {
             operator: op.finish(),
+            ctx: SessionContext::new(),
         })
     }
+
+    // pub async fn scan(&self) -> Result<(), RmkDetectionError> {
+    //     let mut ds = self.operator.list("./").await.unwrap();
+
+    //     while let Some(de) = ds.try_next().await.unwrap() {
+    //         let meta = self.operator.metadata(&de, Metakey::Mode).await.unwrap();
+
+    //         if de.path().ends_with(".metadata") {
+    //             let content = self.operator.read(de.path()).await?;
+    //             let metadata: RmkMetadata = serde_json::from_slice(&content)?;
+
+    //             info!("metadata: {:?}", metadata);
+    //         } else if de.path().ends_with(".content") {
+    //             let content = self.operator.read(de.path()).await?;
+    //             info!("content: {:?}", content);
+    //             let content: RmkContent = serde_json::from_slice(&content)?;
+
+    //             info!("content: {:?}", content);
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
 
     pub async fn scan(&self) -> Result<(), RmkDetectionError> {
         let mut ds = self.operator.list("./").await.unwrap();
@@ -37,17 +62,25 @@ impl RmkTablet {
         while let Some(de) = ds.try_next().await.unwrap() {
             let meta = self.operator.metadata(&de, Metakey::Mode).await.unwrap();
 
-            if de.path().ends_with(".metadata") {
-                let content = self.operator.read(de.path()).await.unwrap();
-                let metadata: RmkMetadata = serde_json::from_slice(&content)?;
+            let kind = if meta.is_dir() {
+                "Directory"
+            } else {
+                "RegularFile"
+            };
 
-                info!("metadata: {:?}", metadata);
-            } else if de.path().ends_with(".content") {
-                let content = self.operator.read(de.path()).await.unwrap();
-                let content: RmkContent = serde_json::from_slice(&content)?;
+            let name = de.name();
+            let size = meta.content_length();
 
-                info!("content: {:?}", content);
-            }
+            let mtime = meta.last_modified();
+
+            // if de.path().ends_with(".metadata") {
+            //     let content = self.operator.read(de.path()).await?;
+            //     let metadata: RmkMetadata = serde_json::from_slice(&content)?;
+            // } else if de.path().ends_with(".content") {
+            //     let content = self.operator.read(de.path()).await?;
+
+            //     let content: RmkContent = serde_json::from_slice(&content)?;
+            // }
         }
 
         Ok(())
