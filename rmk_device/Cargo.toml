@@ -22,7 +22,6 @@ tokio.workspace = true
 async-trait.workspace = true
 futures.workspace = true
 
-datafusion.workspace = true
 
 opendal = { version = "0.36", features = ["services-sftp"] }
 

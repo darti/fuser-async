@@ -11,7 +11,7 @@ use fuser_async::{
     async_filesystem::{AsyncFilesystem, Attr, Lookup, ReadDir},
     fuser::{FileAttr, FileType},
 };
-use log::debug;
+use log::{debug, info};
 
 use bimap::BiMap;
 
@@ -121,14 +121,37 @@ impl AsyncFilesystem for OpendalFs {
 
         let mut o = offset;
 
+        let mut entries = vec![];
+
+        entries.push(ReadDir {
+            ino,
+            offset,
+            file_type: FileType::Directory,
+            name: ".".to_string(),
+        });
+
         while let Some(de) = ds.try_next().await.unwrap() {
+            o = o + 1;
             let meta = self.operator.metadata(&de, Metakey::Mode).await?;
             let entry_path = de.path().to_owned();
 
             let ino = self.get_inode(entry_path);
+
+            info!("ino: {}, path: {:?}", ino, de.path());
+
+            entries.push(ReadDir {
+                ino,
+                offset: o,
+                file_type: if meta.is_dir() {
+                    FileType::Directory
+                } else {
+                    FileType::RegularFile
+                },
+                name: de.name().to_string(),
+            });
         }
 
-        Ok(vec![])
+        Ok(entries)
     }
 
     async fn read(

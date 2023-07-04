@@ -11,7 +11,7 @@ description.workspace = true
 [dependencies]
 async-trait.workspace = true
 
-fuser = { version = "0.12", features = ["serializable"] }
+fuser = { version = "0.12.0", features = ["serializable"], path = "../../../rmk/ref/fuser" }
 
 log.workspace = true
 pretty_env_logger.workspace = true

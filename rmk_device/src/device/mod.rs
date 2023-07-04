@@ -1,4 +1,3 @@
-use datafusion::prelude::*;
 use futures::TryStreamExt;
 
 use opendal::{services, Metakey, Operator};
@@ -7,7 +6,6 @@ use crate::errors::RmkDetectionError;
 
 pub struct RmkTablet {
     operator: Operator,
-    ctx: SessionContext,
 }
 
 impl RmkTablet {
@@ -28,7 +26,6 @@ impl RmkTablet {
 
         Ok(RmkTablet {
             operator: op.finish(),
-            ctx: SessionContext::new(),
         })
     }
 

@@ -159,7 +159,8 @@ async fn main() -> anyhow::Result<()> {
     Builder::from_env(Env::new().default_filter_or("info")).init();
     let mountpoint = tempfile::tempdir().unwrap();
 
-    let umount = spawn_mount(SimpleFS {}, mountpoint, &[]).expect("Failed to mount filesystem");
+    let (mount, umount) =
+        spawn_mount(SimpleFS {}, mountpoint, &[]).expect("Failed to mount filesystem");
 
     let mut sig_term = signal(SignalKind::terminate())?;
 
