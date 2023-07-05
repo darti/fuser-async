@@ -23,7 +23,7 @@ async-trait.workspace = true
 futures.workspace = true
 
 
-opendal = { version = "0.36", features = ["services-sftp"] }
+opendal = { version = "0.38", features = ["services-sftp"] }
 
 lazy_static.workspace = true
 
@@ -35,3 +35,4 @@ config = { version = "0.13", features = ["toml"] }
 directories = "5.0.1"
 
 rmk_format = { version = "*", path = "../rmk_format" }
+opendal-mount = { version = "0.1.0", path = "../../opendal-mount" }

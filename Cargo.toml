@@ -1,5 +1,5 @@
 [workspace]
-members = ["fuser_async", "rmk_device", "rmk_format", "fuser_opendal"]
+members = ["rmk_device", "rmk_format"]
 resolver = "2"
 
 [workspace.package]

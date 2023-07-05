@@ -5,3 +5,7 @@ key_file = "~/.ssh/id_remarkable"
 
 [remarkable]
 base = "/home/root/.local/share/remarkable/xochitl"
+
+[local]
+base = "xochitl"
+overlay = "overlay"
