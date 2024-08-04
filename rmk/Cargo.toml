@@ -1,0 +1,11 @@
+[package]
+name = "rmk"
+
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+
+[dependencies]
+snafu.workspace = true
+anyhow.workspace = true

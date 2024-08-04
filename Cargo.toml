@@ -1,5 +1,5 @@
 [workspace]
-members = ["rmk_device", "rmk_format"]
+members = ["rmk_device", "rmk_format", "rmk_fs", "rmk"]
 resolver = "2"
 
 [workspace.package]
@@ -13,15 +13,22 @@ thiserror = "1"
 log = "0.4"
 pretty_env_logger = "0.5"
 anyhow = "1"
+snafu = "0.8.4"
+
 lazy_static = "1"
+
+console-subscriber = "0.3.0"
+tokio-console = "0.1.12"
 
 serde = { version = "1", features = ["derive"] }
 serde_with = "3"
 
-toml = "0.7"
+toml = "0.8.19"
 serde_json = "1"
 
 tempfile = "3"
+
+opendal = { version = "0.48", features = ["services-sftp", "services-fs"] }
 
 futures = "0.3"
 async-trait = "0.1"
@@ -34,3 +41,4 @@ tokio = { version = "1", features = [
     "sync",
     "tracing",
 ] }
+tokio-util = "0.7.11"

@@ -53,10 +53,10 @@ impl RmkTablet {
     // }
 
     pub async fn scan(&self) -> Result<(), RmkDetectionError> {
-        let mut ds = self.operator.list("./").await.unwrap();
+        let entries = self.operator.list("./").await.unwrap();
 
-        while let Some(de) = ds.try_next().await.unwrap() {
-            let meta = self.operator.metadata(&de, Metakey::Mode).await.unwrap();
+        for entry in entries {
+            let meta = entry.metadata();
 
             let kind = if meta.is_dir() {
                 "Directory"
@@ -64,7 +64,7 @@ impl RmkTablet {
                 "RegularFile"
             };
 
-            let name = de.name();
+            let name = entry.name();
             let size = meta.content_length();
 
             let mtime = meta.last_modified();
