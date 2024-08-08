@@ -9,3 +9,11 @@ description.workspace = true
 [dependencies]
 snafu.workspace = true
 anyhow.workspace = true
+
+console-subscriber.workspace = true
+tracing.workspace = true
+
+tokio.workspace = true
+tokio-util.workspace = true
+
+opendal.workspace = true
