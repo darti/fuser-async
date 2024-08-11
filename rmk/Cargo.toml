@@ -17,3 +17,16 @@ tokio.workspace = true
 tokio-util.workspace = true
 
 opendal.workspace = true
+opendal-mount.workspace = true
+
+config.workspace = true
+directories.workspace = true
+tempfile.workspace = true
+
+serde.workspace = true
+toml.workspace = true
+serde_json.workspace = true
+
+lazy_static.workspace = true
+
+derive_builder.workspace = true

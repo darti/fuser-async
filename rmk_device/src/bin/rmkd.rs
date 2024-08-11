@@ -1,5 +1,4 @@
 use log::{debug, error, info};
-use pretty_env_logger::env_logger::{Builder, Env};
 
 use rmk_device::{
     config::SETTINGS,

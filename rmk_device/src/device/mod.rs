@@ -1,6 +1,4 @@
-use futures::TryStreamExt;
-
-use opendal::{services, Metakey, Operator};
+use opendal::{services, Operator};
 
 use crate::errors::RmkDetectionError;
 
