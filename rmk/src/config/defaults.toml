@@ -1,2 +1,3 @@
 [cache]
 root = "/Users/matthieudartiguenave/Projects/rmk/dump/xochitl"
+mountpoint_prefix = "/Users/matthieudartiguenave/Projects/rmk/mnt"

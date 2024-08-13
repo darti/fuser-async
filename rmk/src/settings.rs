@@ -32,7 +32,7 @@ pub struct Configuration {
 #[derive(Deserialize, Serialize, Clone)]
 pub struct CacheConfiguration {
     pub root: String,
-    pub mount_point: Option<PathBuf>,
+    pub mountpoint_prefix: Option<PathBuf>,
 }
 
 pub struct Settings {

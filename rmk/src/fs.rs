@@ -1,9 +1,10 @@
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use bytes::Bytes;
 use opendal::{services::Fs, Operator};
 use opendal_mount::mount::Mounter;
-use opendal_mount::{mount::FsMounter, NFSService, OpendalFs};
+use opendal_mount::{mount::FsMounter, NFSService, OpendalFs, VolumeIconLayer};
 use snafu::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info};
@@ -23,23 +24,28 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct RmkFs {
     nfs_cache: NFSService<OpendalFs>,
+    cache_mountpoint: PathBuf,
 }
 
 impl RmkFs {
-    #[tracing::instrument(name = "Init Rmk FS")]
+    #[tracing::instrument(name = "Init Rmk FS", skip_all)]
     pub async fn new<P>(
         task_tracker: TaskTracker,
         cancellation_token: CancellationToken,
         cache_host: &str,
         root: &str,
         cache_mountpoint: P,
+        volume_icon: Bytes,
     ) -> Result<Self, Error>
     where
         P: AsRef<Path> + std::fmt::Debug,
     {
         info!("Mounting cache at {}", root);
         let builder = Fs::default().root(root);
-        let cache = Operator::new(builder).context(CacheCreationSnafu)?.finish();
+        let cache = Operator::new(builder)
+            .context(CacheCreationSnafu)?
+            .finish()
+            .layer(VolumeIconLayer::new(volume_icon));
 
         let nfs_cache = NFSService::new(
             OpendalFs::new(cache),
@@ -62,6 +68,8 @@ impl RmkFs {
             };
         });
 
+        let cache_mountpoint_local = cache_mountpoint.as_ref().to_path_buf();
+
         info!("Mounting cache at {:?}", cache_mountpoint);
         FsMounter::mount(
             &addr.ip().to_string(),
@@ -73,6 +81,16 @@ impl RmkFs {
         .await
         .context(CacheMountSnafu)?;
 
-        Ok(Self { nfs_cache })
+        Ok(Self {
+            nfs_cache,
+            cache_mountpoint: cache_mountpoint_local,
+        })
+    }
+}
+
+impl Drop for RmkFs {
+    fn drop(&mut self) {
+        info!("Unmounting cache");
+        let _ = FsMounter::umount(self.cache_mountpoint.clone());
     }
 }

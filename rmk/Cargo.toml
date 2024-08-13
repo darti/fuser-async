@@ -27,6 +27,8 @@ serde.workspace = true
 toml.workspace = true
 serde_json.workspace = true
 
+bytes.workspace = true
+
 lazy_static.workspace = true
 
 derive_builder.workspace = true

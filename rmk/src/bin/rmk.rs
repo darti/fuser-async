@@ -1,7 +1,6 @@
-use opendal_mount::mount::FsMounter;
-use opendal_mount::mount::Mounter;
 use rmk::{fs::RmkFs, settings::SETTINGS};
 use tempfile::tempdir;
+use tempfile::TempDir;
 use tokio::{
     select,
     signal::{
@@ -11,6 +10,8 @@ use tokio::{
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::info;
+
+use bytes::Bytes;
 
 #[tokio::main]
 #[tracing::instrument]
@@ -22,14 +23,20 @@ async fn main() -> anyhow::Result<()> {
     let cancellation_token = CancellationToken::new();
     let task_tracker = TaskTracker::new();
 
-    let cache_mountpoint = tempdir().unwrap();
+    let cache_mountpoint = if let Some(prefix) = &SETTINGS.config().cache.mountpoint_prefix {
+        TempDir::with_prefix_in("rmk-", prefix)
+    } else {
+        tempdir()
+    }
+    .unwrap();
 
-    let fs = RmkFs::new(
+    let _fs = RmkFs::new(
         task_tracker,
         cancellation_token,
         "localhost:0",
         &SETTINGS.config().cache.root,
         cache_mountpoint.path(),
+        Bytes::from_static(include_bytes!("../assets/remarkable.icns")),
     )
     .await?;
 
@@ -45,9 +52,6 @@ async fn main() -> anyhow::Result<()> {
 
         }
     }
-
-    info!("Unmounting NFS service");
-    FsMounter::umount(cache_mountpoint).await?;
 
     info!("Clean exit");
 
