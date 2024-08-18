@@ -9,6 +9,8 @@ use snafu::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info};
 
+use crate::rmk_layer::RmkLayer;
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Error creating cache: {}", source))]
@@ -44,8 +46,8 @@ impl RmkFs {
         let builder = Fs::default().root(root);
         let cache = Operator::new(builder)
             .context(CacheCreationSnafu)?
-            .finish()
-            .layer(VolumeIconLayer::new(volume_icon));
+            .layer(RmkLayer::new())
+            .finish();
 
         let nfs_cache = NFSService::new(
             OpendalFs::new(cache),
@@ -76,7 +78,7 @@ impl RmkFs {
             addr.port(),
             "",
             cache_mountpoint,
-            false,
+            true,
         )
         .await
         .context(CacheMountSnafu)?;

@@ -32,3 +32,9 @@ bytes.workspace = true
 lazy_static.workspace = true
 
 derive_builder.workspace = true
+
+indextree.workspace = true
+
+futures.workspace = true
+
+rmk_format = { path = "../rmk_format" }
