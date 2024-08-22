@@ -37,7 +37,7 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
     type BlockingReader = A::BlockingReader;
     type Writer = A::Writer;
     type BlockingWriter = A::BlockingWriter;
-    type Lister = A::Lister;
+    type Lister = RmkLister;
     type BlockingLister = A::BlockingLister;
 
     fn inner(&self) -> &Self::Inner {
@@ -65,10 +65,53 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
             opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
         })?;
 
-        self.inner.list(path, args).await
+        let normalized_path = normalize_path(path);
+
+        self.table.list(&normalized_path).await.map_err(|e| {
+            opendal::Error::new(
+                ErrorKind::Unexpected,
+                format!("Failed to list path {}: {}", path, e),
+            )
+        })?;
+
+        Ok((RpList::default(), RmkLister::new()))
     }
 
     fn blocking_list(&self, path: &str, args: OpList) -> Result<(RpList, Self::BlockingLister)> {
         self.inner.blocking_list(path, args)
+    }
+}
+
+pub struct RmkLister {}
+
+impl RmkLister {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    fn inner_next(&mut self) -> Option<oio::Entry> {
+        // self.idx.next().map(|v| {
+        //     let mode = if v.ends_with('/') {
+        //         EntryMode::DIR
+        //     } else {
+        //         EntryMode::FILE
+        //     };
+        //     let meta = Metadata::new(mode);
+        //     oio::Entry::with(v, meta)
+        // })
+        //
+        None
+    }
+}
+
+impl oio::List for RmkLister {
+    async fn next(&mut self) -> Result<Option<oio::Entry>> {
+        todo!()
+    }
+}
+
+impl oio::BlockingList for RmkLister {
+    fn next(&mut self) -> Result<Option<oio::Entry>> {
+        todo!()
     }
 }

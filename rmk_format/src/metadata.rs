@@ -1,10 +1,9 @@
-use std::time::SystemTime;
-
+use chrono::{DateTime, Utc};
 use serde_with::DefaultOnNull;
 use serde_with::{serde::Deserialize, serde_as};
 
 #[serde_as]
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RmkMetadata {
     #[serde_as(deserialize_as = "DefaultOnNull")]
@@ -14,7 +13,7 @@ pub struct RmkMetadata {
     // last_opened: SystemTime,
     // last_opened_page: usize,
     #[serde_as(as = "serde_with::TimestampSeconds<String>")]
-    pub last_modified: SystemTime,
+    pub last_modified: DateTime<Utc>,
 
     #[serde_as(deserialize_as = "DefaultOnNull")]
     #[serde(default)]
