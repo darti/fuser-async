@@ -41,14 +41,12 @@ pub struct RmkMetadata {
     pub visible_name: String,
 }
 
-//     "createdTime": "1707124703715",
-//     "lastModified": "1707304046127",
-//     "lastOpened": "1707296430499",
-//     "lastOpenedPage": 1,
-//     "parent": "37d53cbe-e82d-4969-86fe-e5bc365a9f1f",
-//     "pinned": false,
-//     "type": "DocumentType",
-//     "visibleName": "Amundi tomorrow"
+impl RmkMetadata {
+    pub fn is_dir(&self) -> bool {
+        self.typ == "CollectionType"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -64,7 +62,7 @@ mod tests {
                 "parent": "37d53cbe-e82d-4969-86fe-e5bc365a9f1f",
                 "pinned": false,
                 "type": "DocumentType",
-                "visibleName": "Amundi tomorrow"
+                "visibleName": "Tomorrow"
         });
 
         let metadata: RmkMetadata = serde_json::from_value(data).unwrap();

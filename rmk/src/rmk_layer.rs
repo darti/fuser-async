@@ -1,10 +1,11 @@
 use core::str;
+use std::future::Future;
 use std::sync::Arc;
+use std::vec::IntoIter;
 
+use crate::table::{Entry as RmkEntry, InodeTable};
 use opendal::raw::*;
 use opendal::*;
-
-use crate::table::InodeTable;
 
 pub struct RmkLayer {}
 
@@ -29,6 +30,10 @@ impl<A: Access> Layer<A> for RmkLayer {
 pub struct RmkAccessor<A: Access> {
     inner: A,
     table: Arc<InodeTable>,
+}
+
+impl<A: Access> RmkAccessor<A> {
+    fn ensure_scanned(&self) {}
 }
 
 impl<A: Access> LayeredAccess for RmkAccessor<A> {
@@ -60,6 +65,14 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
         self.inner.blocking_write(path, args)
     }
 
+    fn stat(&self, path: &str, args: OpStat) -> impl Future<Output = Result<RpStat>> + MaybeSend {
+        self.inner().stat(path, args)
+    }
+
+    fn blocking_stat(&self, path: &str, args: OpStat) -> Result<RpStat> {
+        self.inner().blocking_stat(path, args)
+    }
+
     async fn list(&self, path: &str, args: OpList) -> Result<(RpList, Self::Lister)> {
         self.table.scan(self.inner(), false).await.map_err(|e| {
             opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
@@ -67,14 +80,14 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
 
         let normalized_path = normalize_path(path);
 
-        self.table.list(&normalized_path).await.map_err(|e| {
+        let entries = self.table.list(&normalized_path).await.map_err(|e| {
             opendal::Error::new(
                 ErrorKind::Unexpected,
                 format!("Failed to list path {}: {}", path, e),
             )
         })?;
 
-        Ok((RpList::default(), RmkLister::new()))
+        Ok((RpList::default(), RmkLister::new(entries)))
     }
 
     fn blocking_list(&self, path: &str, args: OpList) -> Result<(RpList, Self::BlockingLister)> {
@@ -82,36 +95,47 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
     }
 }
 
-pub struct RmkLister {}
+pub struct RmkReader {}
+
+pub struct RmkLister {
+    entries: IntoIter<RmkEntry>,
+}
 
 impl RmkLister {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(entries: Vec<RmkEntry>) -> Self {
+        Self {
+            entries: entries.into_iter(),
+        }
     }
 
     fn inner_next(&mut self) -> Option<oio::Entry> {
-        // self.idx.next().map(|v| {
-        //     let mode = if v.ends_with('/') {
-        //         EntryMode::DIR
-        //     } else {
-        //         EntryMode::FILE
-        //     };
-        //     let meta = Metadata::new(mode);
-        //     oio::Entry::with(v, meta)
-        // })
-        //
-        None
+        self.entries.next().map(|entry| {
+            let mode = if entry.meta.is_dir() {
+                EntryMode::DIR
+            } else {
+                EntryMode::FILE
+            };
+
+            let name = format!(
+                "{}{}",
+                entry.meta.visible_name,
+                if entry.meta.is_dir() { "/" } else { ".rmk" }
+            );
+
+            let meta = Metadata::new(mode);
+            oio::Entry::with(name, meta)
+        })
     }
 }
 
 impl oio::List for RmkLister {
     async fn next(&mut self) -> Result<Option<oio::Entry>> {
-        todo!()
+        Ok(self.inner_next())
     }
 }
 
 impl oio::BlockingList for RmkLister {
     fn next(&mut self) -> Result<Option<oio::Entry>> {
-        todo!()
+        Ok(self.inner_next())
     }
 }

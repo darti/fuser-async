@@ -48,6 +48,18 @@ impl InodeTable {
         }
     }
 
+    pub fn get(&self, path: &str) -> Result<Entry, Error> {
+        unimplemented!()
+        // let table = self.inner.read().await;
+
+        // let (node, _, _) = table
+        //     .id_index
+        //     .get(id)
+        //     .context(Node { id: id.to_string() })?;
+
+        // Ok(table.inodes.get(*node).get().to_owned())
+    }
+
     pub async fn list(&self, path: &str) -> Result<Vec<Entry>, Error> {
         let table = self.inner.read().await;
 
