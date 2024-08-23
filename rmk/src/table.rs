@@ -64,7 +64,7 @@ impl InodeTable {
         // Ok(table.inodes.get(*node).get().to_owned())
     }
 
-    pub async fn list(&self, path: &str) -> Result<Vec<Entry>, Error> {
+    pub fn list(&self, path: &str) -> Result<Vec<Entry>, Error> {
         let table = self.inner.read().unwrap();
 
         table.list(path)

@@ -33,7 +33,22 @@ pub struct RmkAccessor<A: Access> {
 }
 
 impl<A: Access> RmkAccessor<A> {
-    fn ensure_scanned(&self) {}
+    fn ensure_scanned(&self, force: bool) -> Result<(), Error> {
+        self.table.scan(self.inner(), force).map_err(|e| {
+            opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
+        })
+    }
+
+    fn list_common(&self, path: &str) -> Result<Vec<RmkEntry>, Error> {
+        let normalized_path = normalize_path(path);
+
+        self.table.list(&normalized_path).map_err(|e| {
+            opendal::Error::new(
+                ErrorKind::Unexpected,
+                format!("Failed to list path {}: {}", path, e),
+            )
+        })
+    }
 }
 
 impl<A: Access> LayeredAccess for RmkAccessor<A> {
@@ -43,7 +58,7 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
     type Writer = A::Writer;
     type BlockingWriter = A::BlockingWriter;
     type Lister = RmkLister;
-    type BlockingLister = A::BlockingLister;
+    type BlockingLister = RmkLister;
 
     fn inner(&self) -> &Self::Inner {
         &self.inner
@@ -74,24 +89,19 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
     }
 
     async fn list(&self, path: &str, args: OpList) -> Result<(RpList, Self::Lister)> {
-        self.table.scan(self.inner(), false).map_err(|e| {
-            opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
-        })?;
+        self.ensure_scanned(false)?;
 
-        let normalized_path = normalize_path(path);
-
-        let entries = self.table.list(&normalized_path).await.map_err(|e| {
-            opendal::Error::new(
-                ErrorKind::Unexpected,
-                format!("Failed to list path {}: {}", path, e),
-            )
-        })?;
+        let entries = self.list_common(path)?;
 
         Ok((RpList::default(), RmkLister::new(entries)))
     }
 
     fn blocking_list(&self, path: &str, args: OpList) -> Result<(RpList, Self::BlockingLister)> {
-        self.inner.blocking_list(path, args)
+        self.ensure_scanned(false)?;
+
+        let entries = self.list_common(path)?;
+
+        Ok((RpList::default(), RmkLister::new(entries)))
     }
 }
 
