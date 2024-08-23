@@ -1,15 +1,19 @@
-use std::{collections::HashMap, ffi::OsString, path::Path, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    path::Path,
+    sync::{Arc, RwLock},
+    time::Instant,
+};
 
 use indextree::{Arena, NodeId};
 use opendal::raw::{
-    oio::{List, Read},
+    oio::{BlockingList, BlockingRead, List, Read},
     Access, OpList, OpRead,
 };
 
 use rmk_format::metadata::RmkMetadata;
 use snafu::{OptionExt, ResultExt, Snafu};
 
-use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 const ROOT: &str = "ROOT";
@@ -61,13 +65,13 @@ impl InodeTable {
     }
 
     pub async fn list(&self, path: &str) -> Result<Vec<Entry>, Error> {
-        let table = self.inner.read().await;
+        let table = self.inner.read().unwrap();
 
         table.list(path)
     }
 
-    pub async fn scan<A: Access>(&self, accessor: &A, force: bool) -> Result<(), Error> {
-        let read_table = self.inner.read().await;
+    pub fn scan<A: Access>(&self, accessor: &A, force: bool) -> Result<(), Error> {
+        let read_table = self.inner.read().unwrap();
 
         if force || !read_table.scanned {
             info!(
@@ -77,9 +81,9 @@ impl InodeTable {
 
             drop(read_table);
 
-            let mut write_table = self.inner.write().await;
+            let mut write_table = self.inner.write().unwrap();
 
-            write_table.scan(accessor).await?;
+            write_table.scan(accessor)?;
         }
 
         Ok(())
@@ -156,7 +160,7 @@ impl InodeTableInner {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn scan<A: Access>(&mut self, accessor: &A) -> Result<(), Error> {
+    pub fn scan<A: Access>(&mut self, accessor: &A) -> Result<(), Error> {
         self.inodes.clear();
         self.id_index.clear();
 
@@ -164,8 +168,7 @@ impl InodeTableInner {
         let start_time = Instant::now();
 
         let (_, mut lister) = accessor
-            .list("/", OpList::default())
-            .await
+            .blocking_list("/", OpList::default())
             .context(UpstreamListSnafu)?;
 
         let root = self.inodes.new_node(Entry {
@@ -180,10 +183,11 @@ impl InodeTableInner {
             .insert(ROOT.to_owned(), (root, None, "/".to_string()));
 
         // Read all metadata files
-        while let Some(entry) = lister.next().await.context(EntriesListSnafu)? {
+        while let Some(entry) = lister.next().context(EntriesListSnafu)? {
             if entry.path().ends_with(".metadata") {
-                if let Ok((_, mut reader)) = accessor.read(entry.path(), OpRead::default()).await {
-                    if let Ok(buf) = reader.read_all().await {
+                if let Ok((_, mut reader)) = accessor.blocking_read(entry.path(), OpRead::default())
+                {
+                    if let Ok(buf) = reader.read() {
                         if let Ok(metadata) = serde_json::from_slice::<RmkMetadata>(&buf.to_vec()) {
                             let id = entry.path().trim_end_matches(".metadata").to_string();
                             let inode = self.inodes.new_node(Entry {

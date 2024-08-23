@@ -74,7 +74,7 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
     }
 
     async fn list(&self, path: &str, args: OpList) -> Result<(RpList, Self::Lister)> {
-        self.table.scan(self.inner(), false).await.map_err(|e| {
+        self.table.scan(self.inner(), false).map_err(|e| {
             opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
         })?;
 
