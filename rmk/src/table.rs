@@ -14,7 +14,7 @@ use opendal::raw::{
 use rmk_format::metadata::RmkMetadata;
 use snafu::{OptionExt, ResultExt, Snafu};
 
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 const ROOT: &str = "ROOT";
 

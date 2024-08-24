@@ -6,6 +6,7 @@ use std::vec::IntoIter;
 use crate::table::{Entry as RmkEntry, InodeTable};
 use opendal::raw::*;
 use opendal::*;
+use tracing::debug;
 
 pub struct RmkLayer {}
 
@@ -25,10 +26,9 @@ impl<A: Access> Layer<A> for RmkLayer {
     type LayeredAccess = RmkAccessor<A>;
 
     fn layer(&self, inner: A) -> Self::LayeredAccess {
-        RmkAccessor {
-            inner,
-            table: Arc::new(InodeTable::new()),
-        }
+        let layer = RmkAccessor::new(inner);
+
+        layer.unwrap()
     }
 }
 
@@ -39,6 +39,17 @@ pub struct RmkAccessor<A: Access> {
 }
 
 impl<A: Access> RmkAccessor<A> {
+    #[tracing::instrument]
+    fn new(inner: A) -> Result<Self> {
+        let table = Arc::new(InodeTable::new());
+
+        table.scan(&inner, false).map_err(|e| {
+            opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
+        })?;
+
+        Ok(Self { inner, table })
+    }
+
     fn ensure_scanned(&self, force: bool) -> Result<(), Error> {
         self.table.scan(self.inner(), force).map_err(|e| {
             opendal::Error::new(ErrorKind::Unexpected, format!("Failed to scan: {}", e))
@@ -55,6 +66,32 @@ impl<A: Access> RmkAccessor<A> {
             )
         })
     }
+
+    fn stat_common(&self, path: &str) -> Result<Metadata, Error> {
+        let normalized_path = normalize_path(path);
+
+        let entry = self
+            .table
+            .get(&normalized_path)
+            .map_err(|e| {
+                opendal::Error::new(
+                    ErrorKind::Unexpected,
+                    format!("Failed to get path {}: {}", path, e),
+                )
+            })
+            .map_err(|e| {
+                opendal::Error::new(ErrorKind::Unexpected, format!("Failed to get: {}", e))
+            })?;
+
+        let metadata = Metadata::new(if entry.meta.is_dir() || path.ends_with("/") {
+            EntryMode::DIR
+        } else {
+            EntryMode::FILE
+        })
+        .with_content_length(0);
+
+        Ok(metadata)
+    }
 }
 
 impl<A: Access> LayeredAccess for RmkAccessor<A> {
@@ -70,16 +107,24 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
         &self.inner
     }
 
-    async fn read(&self, path: &str, args: OpRead) -> Result<(RpRead, Self::Reader)> {
-        self.inner.read(path, args).await
+    fn read(
+        &self,
+        path: &str,
+        args: OpRead,
+    ) -> impl Future<Output = Result<(RpRead, Self::Reader)>> + MaybeSend {
+        self.inner.read(path, args)
     }
 
     fn blocking_read(&self, path: &str, args: OpRead) -> Result<(RpRead, Self::BlockingReader)> {
         self.inner.blocking_read(path, args)
     }
 
-    async fn write(&self, path: &str, args: OpWrite) -> Result<(RpWrite, Self::Writer)> {
-        self.inner.write(path, args).await
+    fn write(
+        &self,
+        path: &str,
+        args: OpWrite,
+    ) -> impl Future<Output = Result<(RpWrite, Self::Writer)>> + MaybeSend {
+        self.inner.write(path, args)
     }
 
     fn blocking_write(&self, path: &str, args: OpWrite) -> Result<(RpWrite, Self::BlockingWriter)> {
@@ -87,19 +132,31 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
     }
 
     fn stat(&self, path: &str, args: OpStat) -> impl Future<Output = Result<RpStat>> + MaybeSend {
-        self.inner().stat(path, args)
+        async {
+            let metadata = self.stat_common(path)?;
+
+            Ok(RpStat::new(metadata))
+        }
     }
 
     fn blocking_stat(&self, path: &str, args: OpStat) -> Result<RpStat> {
-        self.inner().blocking_stat(path, args)
+        let metadata = self.stat_common(path)?;
+
+        Ok(RpStat::new(metadata))
     }
 
-    async fn list(&self, path: &str, args: OpList) -> Result<(RpList, Self::Lister)> {
-        self.ensure_scanned(false)?;
+    fn list(
+        &self,
+        path: &str,
+        args: OpList,
+    ) -> impl Future<Output = Result<(RpList, Self::Lister)>> + MaybeSend {
+        async {
+            self.ensure_scanned(false)?;
 
-        let entries = self.list_common(path)?;
+            let entries = self.list_common(path)?;
 
-        Ok((RpList::default(), RmkLister::new(entries)))
+            Ok((RpList::default(), RmkLister::new(entries)))
+        }
     }
 
     fn blocking_list(&self, path: &str, args: OpList) -> Result<(RpList, Self::BlockingLister)> {
@@ -135,7 +192,7 @@ impl RmkLister {
             let name = format!(
                 "{}{}",
                 entry.meta.visible_name,
-                if entry.meta.is_dir() { "/" } else { ".rmk" }
+                if entry.meta.is_dir() { "/" } else { "" }
             );
 
             let meta = Metadata::new(mode);
