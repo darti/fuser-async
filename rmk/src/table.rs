@@ -14,7 +14,7 @@ use opendal::raw::{
 use rmk_format::metadata::RmkMetadata;
 use snafu::{OptionExt, ResultExt, Snafu};
 
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 const ROOT: &str = "ROOT";
 
@@ -158,12 +158,13 @@ impl InodeTableInner {
 
         for c in parsed_path.components() {
             match c {
-                std::path::Component::ParentDir => {}
                 std::path::Component::Normal(n) => {
                     let name = n.to_str().context(InvalidPathSnafu {
                         segment: n.to_string_lossy().to_string(),
                         path: path.to_string(),
                     })?;
+                    let name = name.strip_suffix(".rmk").unwrap_or(name);
+                    let name = name.trim_end_matches('/');
 
                     current = current
                         .children(&self.inodes)
@@ -179,6 +180,10 @@ impl InodeTableInner {
                         .context(SegmentPathSnafu {
                             path,
                             segment: name,
+                        })
+                        .map_err(|e| {
+                            error!("path : {}, current : {}, name: {}", path, current, name);
+                            e
                         })?;
                 }
                 _ => (),

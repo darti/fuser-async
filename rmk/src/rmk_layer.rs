@@ -155,7 +155,7 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
 
             let entries = self.list_common(path)?;
 
-            Ok((RpList::default(), RmkLister::new(entries)))
+            Ok((RpList::default(), RmkLister::new(path, entries)))
         }
     }
 
@@ -164,7 +164,7 @@ impl<A: Access> LayeredAccess for RmkAccessor<A> {
 
         let entries = self.list_common(path)?;
 
-        Ok((RpList::default(), RmkLister::new(entries)))
+        Ok((RpList::default(), RmkLister::new(path, entries)))
     }
 }
 
@@ -172,12 +172,14 @@ pub struct RmkReader {}
 
 pub struct RmkLister {
     entries: IntoIter<RmkEntry>,
+    root: String,
 }
 
 impl RmkLister {
-    pub fn new(entries: Vec<RmkEntry>) -> Self {
+    pub fn new(root: &str, entries: Vec<RmkEntry>) -> Self {
         Self {
             entries: entries.into_iter(),
+            root: root.to_string(),
         }
     }
 
@@ -190,9 +192,10 @@ impl RmkLister {
             };
 
             let name = format!(
-                "{}{}",
+                "{}/{}{}",
+                self.root,
                 entry.meta.visible_name,
-                if entry.meta.is_dir() { "/" } else { "" }
+                if entry.meta.is_dir() { "/" } else { ".rmk" }
             );
 
             let meta = Metadata::new(mode);
