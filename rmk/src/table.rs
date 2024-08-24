@@ -50,6 +50,12 @@ pub struct InodeTable {
     inner: Arc<RwLock<InodeTableInner>>,
 }
 
+impl Default for InodeTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InodeTable {
     pub fn new() -> Self {
         Self {
@@ -132,8 +138,7 @@ impl InodeTableInner {
 
         Ok(node
             .children(&self.inodes)
-            .map(|c| self.inodes.get(c))
-            .flatten()
+            .filter_map(|c| self.inodes.get(c))
             .map(|e| e.get().to_owned())
             .collect())
     }

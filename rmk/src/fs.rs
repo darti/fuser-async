@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use bytes::Bytes;
 use opendal::{services::Fs, Operator};
 use opendal_mount::mount::Mounter;
-use opendal_mount::{mount::FsMounter, NFSService, OpendalFs, VolumeIconLayer};
+use opendal_mount::{mount::FsMounter, NFSService, OpendalFs};
 use snafu::prelude::*;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info};

@@ -79,7 +79,7 @@ impl Settings {
         fs::create_dir_all(DIRS.config_dir()).unwrap();
 
         fs::write(
-            &self.config_path.clone(),
+            self.config_path.clone(),
             toml::to_string_pretty(&self.config).unwrap(),
         )
         .expect("Failed to write config");

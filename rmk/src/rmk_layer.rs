@@ -9,6 +9,12 @@ use opendal::*;
 
 pub struct RmkLayer {}
 
+impl Default for RmkLayer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RmkLayer {
     pub fn new() -> Self {
         Self {}
