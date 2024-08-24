@@ -7,7 +7,7 @@ use std::{
 
 use indextree::{Arena, NodeId};
 use opendal::raw::{
-    oio::{BlockingList, BlockingRead, List, Read},
+    oio::{BlockingList, BlockingRead},
     Access, OpList, OpRead,
 };
 
@@ -22,14 +22,19 @@ const ROOT: &str = "ROOT";
 pub enum Error {
     #[snafu(display("Upstream list error: {source}"))]
     UpstreamList { source: opendal::Error },
+
     #[snafu(display("Entries list error: {source}"))]
     EntriesList { source: opendal::Error },
-    #[snafu(display("Table lock error"))]
-    LockError {},
+
+    #[snafu(display("Table lock error: {lock_type}"))]
+    Lock { lock_type: String },
+
     #[snafu(display("Invalid path segment {segment} in {path}"))]
     InvalidPath { segment: String, path: String },
+
     #[snafu(display("Segment {segment} of {path} doesn't map"))]
     SegmentPath { segment: String, path: String },
+
     #[snafu(display("Inexisting node {id}"))]
     Node { id: NodeId },
 }
@@ -53,25 +58,34 @@ impl InodeTable {
     }
 
     pub fn get(&self, path: &str) -> Result<Entry, Error> {
-        unimplemented!()
-        // let table = self.inner.read().await;
+        let table = self.inner.read().map_err(|_| {
+            LockSnafu {
+                lock_type: "read".to_string(),
+            }
+            .build()
+        })?;
 
-        // let (node, _, _) = table
-        //     .id_index
-        //     .get(id)
-        //     .context(Node { id: id.to_string() })?;
-
-        // Ok(table.inodes.get(*node).get().to_owned())
+        table.entry(path)
     }
 
     pub fn list(&self, path: &str) -> Result<Vec<Entry>, Error> {
-        let table = self.inner.read().unwrap();
+        let table = self.inner.read().map_err(|_| {
+            LockSnafu {
+                lock_type: "read".to_string(),
+            }
+            .build()
+        })?;
 
         table.list(path)
     }
 
     pub fn scan<A: Access>(&self, accessor: &A, force: bool) -> Result<(), Error> {
-        let read_table = self.inner.read().unwrap();
+        let read_table = self.inner.read().map_err(|_| {
+            LockSnafu {
+                lock_type: "read".to_string(),
+            }
+            .build()
+        })?;
 
         if force || !read_table.scanned {
             info!(
@@ -81,7 +95,12 @@ impl InodeTable {
 
             drop(read_table);
 
-            let mut write_table = self.inner.write().unwrap();
+            let mut write_table = self.inner.write().map_err(|_| {
+                LockSnafu {
+                    lock_type: "write".to_string(),
+                }
+                .build()
+            })?;
 
             write_table.scan(accessor)?;
         }
@@ -117,6 +136,11 @@ impl InodeTableInner {
             .flatten()
             .map(|e| e.get().to_owned())
             .collect())
+    }
+
+    pub fn entry(&self, path: &str) -> Result<Entry, Error> {
+        let node = self.node(path)?;
+        Ok(self.inodes.get(node).unwrap().get().to_owned())
     }
 
     fn node(&self, path: &str) -> Result<NodeId, Error> {
